@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabital Mobile Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+:root {
+  --gold: #f5b700; --gold-press: #e8a400; --gold-soft: #fff4d1;
+  --navy: #02163f; --navy-2: #0a2d73; --navy-soft: #e8eefc; --on-navy-muted: #c7d2e5;
+  --text: #475569; --muted: #64748b; --bg: #f8f9fc; --surface: #fff; --surface-2: #f1f4f9;
+  --line: #e2e8f0; --success: #15803d; --success-bg: #e7f6ee; --warn: #8a5a00; --warn-bg: #fff4d1;
+  --error: #b42318; --error-bg: #fdecea;
+  --board-bg: #e9edf5; --board-text: #02163f; --board-muted: #475569;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --board-bg: #0b1222; --board-text: #e8eefc; --board-muted: #a9b6cc; }
+}
+:root[data-theme="dark"] { --board-bg: #0b1222; --board-text: #e8eefc; --board-muted: #a9b6cc; }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--board-bg); color: var(--board-text); font-family: 'Open Sans', 'Segoe UI', Roboto, Arial, sans-serif; }
+.board-head { max-width: 1240px; margin: 0 auto; padding: 28px 16px 8px; }
+.board-head h1 { font-family: Poppins, sans-serif; font-size: 24px; margin: 0 0 6px; }
+.board-head p { margin: 0; color: var(--board-muted); font-size: 14px; line-height: 1.5; max-width: 760px; }
+.board { max-width: 1240px; margin: 0 auto; padding: 16px 24px 48px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 28px 24px; justify-items: center; }
+.slot { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 360px; }
+.slot-label { font-size: 13px; font-weight: 700; color: var(--board-muted); letter-spacing: .02em; align-self: flex-start; }
+.slot-label b { color: var(--board-text); }
+
+/* phone */
+.phone { width: 100%; max-width: 360px; height: 740px; background: var(--bg); border-radius: 30px; overflow: hidden; position: relative;
+  box-shadow: 0 0 0 8px #0d1426, 0 18px 40px rgba(2,22,63,.25); display: flex; flex-direction: column; color: var(--text); }
+.status { height: 28px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; font-size: 12px; font-weight: 600; color: var(--navy); background: var(--bg); }
+.status.dark { background: var(--navy); color: #fff; }
+.status span:last-child { display: flex; gap: 4px; align-items: center; }
+.status svg { width: 13px; height: 13px; }
+.scroll { flex: 1; overflow-y: auto; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+.appbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px 12px; background: var(--bg); }
+.appbar h2 { font-family: Poppins, sans-serif; font-size: 18px; color: var(--navy); margin: 0; flex: 1; }
+.icon-btn { width: 40px; height: 40px; border-radius: 10px; border: 0; background: transparent; color: var(--navy); display: grid; place-items: center; cursor: pointer; }
+.icon-btn svg { width: 22px; height: 22px; }
+.pad { padding: 0 16px 16px; }
+h3 { font-family: Poppins, sans-serif; color: var(--navy); font-size: 16px; margin: 18px 0 10px; }
+.muted { color: var(--muted); font-size: 13px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.money { font-family: Poppins, sans-serif; font-weight: 600; color: var(--navy); white-space: nowrap; }
+.btn { height: 48px; border-radius: 10px; border: 0; font: 700 15px 'Open Sans', sans-serif; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; width: 100%; }
+.btn svg { width: 18px; height: 18px; }
+.btn-gold { background: var(--gold); color: var(--navy); }
+.btn-gold:active { background: var(--gold-press); }
+.btn-gold:disabled { opacity: .45; cursor: not-allowed; }
+.btn-outline { background: var(--surface); color: var(--navy-2); border: 1.5px solid var(--line); }
+.btn-ghost { background: transparent; color: var(--navy-2); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+.chip svg { width: 13px; height: 13px; }
+.chip.ok { background: var(--success-bg); color: var(--success); }
+.chip.warn { background: var(--warn-bg); color: var(--warn); }
+.chip.err { background: var(--error-bg); color: var(--error); }
+.chip.info { background: var(--navy-soft); color: var(--navy-2); }
+
+/* bottom nav + sticky pay bar */
+.paybar { flex: none; background: var(--surface); border-top: 1px solid var(--line); padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+.paybar .btn { width: auto; flex: 1; }
+.paybar small { display: block; color: var(--muted); font-size: 12px; }
+.nav { flex: none; height: 64px; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); }
+.nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 600; color: var(--muted); text-decoration: none; }
+.nav a svg { width: 22px; height: 22px; }
+.nav a.on { color: var(--navy); }
+.nav a.on svg { stroke-width: 2.4; }
+
+/* home */
+.hello { background: var(--navy); color: #fff; padding: 6px 16px 70px; }
+.hello .row h2 { font-family: Poppins, sans-serif; font-size: 20px; margin: 0; color: #fff; }
+.hello p { color: var(--on-navy-muted); margin: 2px 0 0; font-size: 13px; }
+.hello .icon-btn { color: #fff; position: relative; }
+.dot { position: absolute; top: 9px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+.next { margin: -58px 16px 0; background: var(--surface); border-radius: 18px; padding: 18px; box-shadow: 0 10px 28px rgba(2,22,63,.16); border: 1px solid var(--line); }
+.next .label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.next .amount { font-family: Poppins, sans-serif; font-size: 34px; font-weight: 700; color: var(--navy); margin: 6px 0 2px; }
+.next .due { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.progress { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; margin: 14px 0 6px; }
+.progress i { display: block; height: 100%; background: var(--navy-2); border-radius: 99px; }
+.limit { display: flex; gap: 12px; align-items: center; }
+.limit .ico { width: 40px; height: 40px; border-radius: 12px; background: var(--navy-soft); color: var(--navy-2); display: grid; place-items: center; flex: none; }
+.limit .ico svg { width: 20px; height: 20px; }
+.plan-mini { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.plan-mini:first-child { border-top: 0; }
+.thumb { width: 44px; height: 44px; border-radius: 10px; background: var(--surface-2); color: var(--navy-2); display: grid; place-items: center; flex: none; }
+.thumb svg { width: 22px; height: 22px; }
+
+/* shop */
+.search { display: flex; align-items: center; gap: 8px; height: 46px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); padding: 0 12px; color: var(--muted); font-size: 14px; }
+.search svg { width: 18px; height: 18px; }
+.cats { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 4px; scrollbar-width: none; }
+.cats span { flex: none; padding: 8px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--navy-2); }
+.cats span.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.prod { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; cursor: pointer; }
+.prod .img { height: 108px; background: linear-gradient(135deg, var(--navy-soft), var(--surface-2)); display: grid; place-items: center; color: var(--navy-2); }
+.prod .img svg { width: 40px; height: 40px; stroke-width: 1.4; }
+.prod .body { padding: 10px; }
+.prod .name { font-weight: 700; color: var(--navy); font-size: 13px; line-height: 1.3; }
+.prod .price { font-family: Poppins, sans-serif; font-weight: 600; color: var(--navy); margin-top: 4px; }
+.prod .teaser { font-size: 12px; color: var(--navy-2); font-weight: 600; margin-top: 2px; }
+
+/* plan picker */
+.hero { height: 170px; background: linear-gradient(135deg, var(--navy-soft), var(--surface-2)); display: grid; place-items: center; color: var(--navy-2); }
+.hero svg { width: 72px; height: 72px; stroke-width: 1.2; }
+.plans { display: grid; gap: 8px; }
+.plan-opt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%; }
+.plan-opt.on { border-color: var(--navy); box-shadow: 0 0 0 1px var(--navy) inset; }
+.plan-opt.off { opacity: .55; cursor: not-allowed; }
+.radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); flex: none; display: grid; place-items: center; }
+.plan-opt.on .radio { border-color: var(--navy); }
+.plan-opt.on .radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--navy); }
+.plan-opt .t { font-weight: 700; color: var(--navy); font-size: 14px; }
+.plan-opt .s { font-size: 12px; color: var(--muted); }
+.plan-opt .money { margin-left: auto; font-size: 14px; }
+.sched { margin: 0; padding: 0; list-style: none; }
+.sched li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.sched li:first-child { border-top: 0; }
+.sched .n { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); color: var(--navy); font-weight: 700; font-size: 12px; display: grid; place-items: center; flex: none; }
+.sched li.now .n { background: var(--gold); }
+.sched li.paid .n { background: var(--success-bg); color: var(--success); }
+.sched .what { flex: 1; }
+.sched .what small { display: block; color: var(--muted); font-size: 12px; }
+.total { display: flex; justify-content: space-between; padding-top: 12px; margin-top: 4px; border-top: 2px solid var(--navy); font-weight: 700; color: var(--navy); }
+.facts { font-size: 12.5px; line-height: 1.55; margin: 0; padding-left: 18px; color: var(--text); }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--navy); }
+.check a { color: var(--navy-2); font-weight: 700; }
+.note { display: flex; gap: 10px; padding: 12px; border-radius: 12px; background: var(--navy-soft); color: var(--navy-2); font-size: 13px; line-height: 1.45; }
+.note svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+.note.warn { background: var(--warn-bg); color: var(--warn); }
+
+/* pay modes */
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 12px; }
+.seg button { height: 40px; border: 0; border-radius: 9px; background: transparent; font: 700 12.5px 'Open Sans', sans-serif; color: var(--muted); cursor: pointer; }
+.seg button.on { background: var(--surface); color: var(--navy); box-shadow: 0 1px 3px rgba(2,22,63,.12); }
+.field { display: flex; align-items: center; height: 52px; border: 1.5px solid var(--navy); border-radius: 12px; background: var(--surface); padding: 0 14px; gap: 8px; }
+.field b { color: var(--muted); }
+.field input { border: 0; outline: 0; font: 600 20px Poppins, sans-serif; color: var(--navy); width: 100%; background: transparent; }
+
+/* result + misc */
+.center { text-align: center; padding: 40px 24px; }
+.big-ico { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 18px; }
+.big-ico svg { width: 42px; height: 42px; }
+.big-ico.ok { background: var(--success-bg); color: var(--success); }
+.big-ico.navy { background: var(--navy-soft); color: var(--navy-2); }
+.center h2 { font-family: Poppins, sans-serif; color: var(--navy); font-size: 22px; margin: 0 0 8px; }
+.center p { margin: 0 auto 6px; max-width: 280px; line-height: 1.5; font-size: 14px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.steps li { display: flex; gap: 12px; align-items: center; font-size: 14px; }
+.steps .s-ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--navy-soft); color: var(--navy-2); flex: none; }
+.steps .s-ico svg { width: 18px; height: 18px; }
+.welcome { background: var(--navy); color: #fff; flex: 1; display: flex; flex-direction: column; padding: 28px 24px 24px; }
+.logo { width: 52px; height: 52px; border-radius: 14px; background: var(--gold); color: var(--navy); display: grid; place-items: center; font: 700 28px Poppins, sans-serif; }
+.welcome h2 { font-family: Poppins, sans-serif; font-size: 30px; line-height: 1.2; margin: 34px 0 10px; }
+.welcome p { color: var(--on-navy-muted); line-height: 1.55; margin: 0; font-size: 15px; }
+.welcome ul { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 14px; }
+.welcome li { display: flex; gap: 12px; align-items: center; font-size: 14px; }
+.welcome li svg { width: 20px; height: 20px; color: var(--gold); flex: none; }
+.welcome .actions { margin-top: auto; display: grid; gap: 10px; }
+.welcome .btn-line { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.35); }
+.meter { height: 12px; border-radius: 99px; background: var(--surface-2); overflow: hidden; display: flex; }
+.meter i { display: block; height: 100%; }
+.legend { display: flex; gap: 14px; font-size: 12px; margin-top: 8px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.list-row { display: flex; gap: 12px; align-items: center; padding: 13px 0; border-top: 1px solid var(--line); font-size: 14px; color: var(--navy); font-weight: 600; }
+.list-row:first-child { border-top: 0; }
+.list-row svg { width: 20px; height: 20px; color: var(--navy-2); }
+.list-row .chev { margin-left: auto; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="board-head">
+  <h1>Tabital Pay customer app: prototype</h1>
+  <p>Vault design for Android (Flutter). The sample uses the CLAUDE.md §5.3 example: a GHS 4,000 phone on Pay in 4 with 40% down, plus a GHS 50 delivery fee paid with Payment 1. In the real app every amount comes from the server. Try the plan options, the three pay choices and the deferment checkbox.</p>
+</div>
+
+<div class="board">
+
+  <!-- S1 Welcome -->
+  <section class="slot"><div class="slot-label"><b>S1</b> Welcome</div>
+    <div class="phone">
+      <div class="status dark"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="welcome">
+        <div class="logo" aria-label="Tabital Pay">T</div>
+        <h2>Own it today.<br>Pay later.</h2>
+        <p>Buy phones, laptops and appliances from partner shops. Pay a down payment today and the rest in monthly payments, interest-free when you pay on time.</p>
+        <ul>
+          <li><i data-lucide="calendar-check"></i>Pay in 2, 3 or 4 with a clear schedule</li>
+          <li><i data-lucide="shield-check"></i>Every fee shown before you agree</li>
+          <li><i data-lucide="smartphone"></i>Pay by MoMo or card through Paystack</li>
+        </ul>
+        <div class="actions">
+          <button class="btn btn-gold">Create account</button>
+          <button class="btn btn-line">Sign in</button>
+          <button class="btn btn-ghost" style="color:var(--on-navy-muted);height:36px;font-size:13px">Who can apply?</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S4 Home -->
+  <section class="slot"><div class="slot-label"><b>S4</b> Home: next payment card and sticky pay bar</div>
+    <div class="phone">
+      <div class="status dark"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="scroll">
+        <div class="hello">
+          <div class="row"><div><h2>Hello, Ama</h2><p>Your plans are on track</p></div>
+            <button class="icon-btn" aria-label="Notifications, 1 unread"><i data-lucide="bell"></i><span class="dot"></span></button></div>
+        </div>
+        <div class="next" aria-label="Next payment GHS 800.00, due 3 November 2026">
+          <div class="label">Next payment</div>
+          <div class="amount">GHS 800.00</div>
+          <div class="due"><span>Due 3 Nov 2026</span><span class="chip warn"><i data-lucide="clock"></i>In 31 days</span></div>
+          <div class="progress"><i style="width:40%"></i></div>
+          <div class="row muted"><span>Samsung Galaxy A35 · payment 2 of 4</span><span>GHS 1,600 of 4,000 paid</span></div>
+        </div>
+        <div class="pad">
+          <h3>Your limit</h3>
+          <div class="card limit">
+            <div class="ico"><i data-lucide="wallet"></i></div>
+            <div style="flex:1"><div class="money">GHS 1,000.00 available</div><div class="muted">of GHS 5,000.00 · grows when you pay on time</div></div>
+            <i data-lucide="chevron-right" style="width:18px;color:var(--muted)"></i>
+          </div>
+          <h3>Your plans</h3>
+          <div class="card">
+            <div class="plan-mini"><div class="thumb"><i data-lucide="smartphone"></i></div>
+              <div style="flex:1"><div style="font-weight:700;color:var(--navy)">Samsung Galaxy A35</div><div class="muted">Pay in 4 · 3 payments left</div></div>
+              <span class="chip ok"><i data-lucide="check"></i>On track</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="paybar">
+        <div><div class="money">GHS 800.00</div><small>Due 3 Nov</small></div>
+        <button class="btn btn-gold"><i data-lucide="lock"></i>Pay now</button>
+      </div>
+      <nav class="nav" aria-label="Main"><a class="on" href="#"><i data-lucide="home"></i>Home</a><a href="#"><i data-lucide="shopping-bag"></i>Shop</a><a href="#"><i data-lucide="calendar-range"></i>Plans</a><a href="#"><i data-lucide="user-round"></i>Account</a></nav>
+    </div>
+  </section>
+
+  <!-- S4b Home overdue -->
+  <section class="slot"><div class="slot-label"><b>S4</b> Home when a payment is overdue</div>
+    <div class="phone">
+      <div class="status dark"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="scroll">
+        <div class="hello"><div class="row"><div><h2>Hello, Ama</h2><p>A payment needs your attention</p></div>
+          <button class="icon-btn" aria-label="Notifications"><i data-lucide="bell"></i><span class="dot"></span></button></div></div>
+        <div class="next" style="border-color:var(--error)">
+          <div class="label" style="color:var(--error)">Overdue payment</div>
+          <div class="amount">GHS 880.00</div>
+          <div class="due"><span>Was due 3 Nov 2026</span><span class="chip err"><i data-lucide="alert-triangle"></i>Overdue 2 days</span></div>
+          <div class="card" style="margin-top:12px;background:var(--surface-2);border:0;padding:10px 12px">
+            <div class="row" style="font-size:13px"><span>Payment 2</span><span class="money" style="font-size:13px">GHS 800.00</span></div>
+            <div class="row" style="font-size:13px;margin-top:4px"><span>Late fee (10%)</span><span class="money" style="font-size:13px;color:var(--error)">GHS 80.00</span></div>
+          </div>
+        </div>
+        <div class="pad">
+          <div class="note warn" style="margin-top:16px"><i data-lucide="info"></i><span>Paying now stops another late fee from being added at 31 days. While a payment is overdue you can't start a new plan.</span></div>
+          <button class="btn btn-outline" style="margin-top:12px">Pay part of it</button>
+        </div>
+      </div>
+      <div class="paybar"><div><div class="money">GHS 880.00</div><small>Overdue</small></div><button class="btn btn-gold"><i data-lucide="lock"></i>Pay now</button></div>
+      <nav class="nav"><a class="on" href="#"><i data-lucide="home"></i>Home</a><a href="#"><i data-lucide="shopping-bag"></i>Shop</a><a href="#"><i data-lucide="calendar-range"></i>Plans</a><a href="#"><i data-lucide="user-round"></i>Account</a></nav>
+    </div>
+  </section>
+
+  <!-- S5 Shop -->
+  <section class="slot"><div class="slot-label"><b>S5</b> Shop</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="appbar"><h2>Shop</h2><button class="icon-btn" aria-label="My orders"><i data-lucide="package"></i></button></div>
+      <div class="scroll"><div class="pad">
+        <div class="search"><i data-lucide="search"></i>Search phones, laptops, appliances</div>
+        <div class="cats"><span class="on">All</span><span>Phones</span><span>Laptops</span><span>Appliances</span><span>Tablets</span></div>
+        <p class="muted" style="margin:8px 0 12px">You can spend up to <b style="color:var(--navy)">GHS 1,000.00</b> on a plan</p>
+        <div class="grid2">
+          <div class="prod"><div class="img"><i data-lucide="smartphone"></i></div><div class="body"><div class="name">Samsung Galaxy A35</div><div class="price">GHS 4,000</div><div class="teaser">GHS 1,650 today, then 3 × 800</div></div></div>
+          <div class="prod"><div class="img"><i data-lucide="laptop"></i></div><div class="body"><div class="name">HP 15 Laptop, 8 GB</div><div class="price">GHS 6,500</div><div class="teaser">GHS 2,650 today, then 3 × 1,300</div></div></div>
+          <div class="prod"><div class="img"><i data-lucide="refrigerator"></i></div><div class="body"><div class="name">Nasco Fridge 210 L</div><div class="price">GHS 5,200</div><div class="teaser">GHS 2,130 today, then 3 × 1,040</div></div></div>
+          <div class="prod"><div class="img"><i data-lucide="tv"></i></div><div class="body"><div class="name">TCL 43" Smart TV</div><div class="price">GHS 3,600</div><div class="teaser">GHS 1,490 today, then 3 × 720</div></div></div>
+        </div>
+      </div></div>
+      <nav class="nav"><a href="#"><i data-lucide="home"></i>Home</a><a class="on" href="#"><i data-lucide="shopping-bag"></i>Shop</a><a href="#"><i data-lucide="calendar-range"></i>Plans</a><a href="#"><i data-lucide="user-round"></i>Account</a></nav>
+    </div>
+  </section>
+
+  <!-- S6 Product and plan picker -->
+  <section class="slot"><div class="slot-label"><b>S6</b> Product and plan picker (try the plans)</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Back"><i data-lucide="arrow-left"></i></button><h2>Samsung Galaxy A35</h2></div>
+      <div class="scroll">
+        <div class="hero"><i data-lucide="smartphone"></i></div>
+        <div class="pad">
+          <div class="row" style="margin-top:14px"><div><div class="money" style="font-size:22px">GHS 4,000.00</div><div class="muted">Sold by Accra Phone Hub · 3 in stock</div></div></div>
+          <h3>How would you like to pay?</h3>
+          <div class="plans" id="planOptions" role="radiogroup" aria-label="Payment plan"></div>
+          <h3>Your schedule</h3>
+          <div class="card"><ul class="sched" id="planSched"></ul>
+            <div class="total"><span>Total payable</span><span id="planTotal"></span></div></div>
+          <p class="muted" style="margin-top:10px">Interest-free when you pay on time. Late fees and deferment are explained before you confirm.</p>
+        </div>
+      </div>
+      <div class="paybar"><div><div class="money" id="planDue"></div><small>Due today</small></div><button class="btn btn-gold">Continue</button></div>
+    </div>
+  </section>
+
+  <!-- S7 Checkout review -->
+  <section class="slot"><div class="slot-label"><b>S7</b> Checkout review</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Back"><i data-lucide="arrow-left"></i></button><h2>Review and pay</h2></div>
+      <div class="scroll"><div class="pad">
+        <div class="card">
+          <div class="row" style="font-size:14px"><span>Delivery to</span><span style="color:var(--navy-2);font-weight:700">Change</span></div>
+          <div style="color:var(--navy);font-weight:600;margin-top:4px;font-size:14px">12 Oxford Street, Osu, Accra</div>
+        </div>
+        <h3>Pay today (Payment 1)</h3>
+        <div class="card">
+          <div class="row" style="font-size:14px"><span>Down payment (40%)</span><span class="money">GHS 1,600.00</span></div>
+          <div class="row" style="font-size:14px;margin-top:6px"><span>Delivery fee</span><span class="money">GHS 50.00</span></div>
+          <div class="total"><span>Due today</span><span>GHS 1,650.00</span></div>
+        </div>
+        <h3>Then</h3>
+        <div class="card">
+          <ul class="sched">
+            <li><span class="n">2</span><span class="what">Payment 2<small>3 Nov 2026</small></span><span class="money">GHS 800.00</span></li>
+            <li><span class="n">3</span><span class="what">Payment 3<small>3 Dec 2026</small></span><span class="money">GHS 800.00</span></li>
+            <li><span class="n">4</span><span class="what">Payment 4<small>3 Jan 2027</small></span><span class="money">GHS 800.00</span></li>
+          </ul>
+          <div class="total"><span>Total payable</span><span>GHS 4,050.00</span></div>
+        </div>
+        <h3>Key facts</h3>
+        <ul class="facts">
+          <li>A missed payment adds a late fee of 10% of it the day after the due date, and another 10% from 31 days.</li>
+          <li>Late fees on a plan never go above 25% of the total payable.</li>
+          <li>You can move one payment back 1 month for a 10% fee, on or before its due date.</li>
+          <li>A problem with your order? Report it and your plan is paused while it's resolved (21 days).</li>
+        </ul>
+        <label class="check" style="margin-top:14px"><input type="checkbox" id="terms"> <span>I agree to the payment schedule above, the <a href="#">Terms</a> and the <a href="#">Privacy Policy</a>.</span></label>
+      </div></div>
+      <div class="paybar"><button class="btn btn-gold" id="payDown" disabled><i data-lucide="lock"></i>Pay GHS 1,650.00</button></div>
+    </div>
+  </section>
+
+  <!-- S10 Plan detail -->
+  <section class="slot"><div class="slot-label"><b>S10</b> Plan detail</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Back"><i data-lucide="arrow-left"></i></button><h2>Samsung Galaxy A35</h2></div>
+      <div class="scroll"><div class="pad">
+        <div class="card">
+          <div class="row"><span class="muted">Paid</span><span class="muted">Left to pay</span></div>
+          <div class="row"><span class="money" style="font-size:20px">GHS 1,650.00</span><span class="money" style="font-size:20px">GHS 2,400.00</span></div>
+          <div class="progress"><i style="width:40%"></i></div>
+          <div class="muted">Pay in 4 · Plan PLN-1042 · Accra Phone Hub</div>
+        </div>
+        <h3>Schedule</h3>
+        <div class="card"><ul class="sched">
+          <li class="paid"><span class="n"><i data-lucide="check" style="width:14px"></i></span><span class="what">Payment 1, down payment<small>Paid 3 Oct 2026 · incl. GHS 50 delivery</small></span><span class="money">GHS 1,650.00</span></li>
+          <li class="now"><span class="n">2</span><span class="what">Payment 2<small>Due 3 Nov 2026 · in 31 days</small></span><span class="money">GHS 800.00</span></li>
+          <li><span class="n">3</span><span class="what">Payment 3<small>Due 3 Dec 2026</small></span><span class="money">GHS 800.00</span></li>
+          <li><span class="n">4</span><span class="what">Payment 4<small>Due 3 Jan 2027</small></span><span class="money">GHS 800.00</span></li>
+        </ul></div>
+        <div style="display:grid;gap:8px;margin-top:14px">
+          <button class="btn btn-outline"><i data-lucide="calendar-clock"></i>Move a payment back</button>
+          <button class="btn btn-outline"><i data-lucide="receipt"></i>Receipts</button>
+          <button class="btn btn-ghost"><i data-lucide="flag"></i>Report a problem with this order</button>
+        </div>
+      </div></div>
+      <div class="paybar"><div><div class="money">GHS 800.00</div><small>Payment 2</small></div><button class="btn btn-gold"><i data-lucide="lock"></i>Pay</button></div>
+    </div>
+  </section>
+
+  <!-- S11 Pay -->
+  <section class="slot"><div class="slot-label"><b>S11</b> Pay: this payment, part, or pay off (try the choices)</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Back"><i data-lucide="arrow-left"></i></button><h2>Make a payment</h2></div>
+      <div class="scroll"><div class="pad">
+        <div class="seg" role="radiogroup" aria-label="How much to pay">
+          <button class="on" data-mode="one" role="radio" aria-checked="true">This payment</button>
+          <button data-mode="part" role="radio" aria-checked="false">Pay part</button>
+          <button data-mode="off" role="radio" aria-checked="false">Pay off plan</button>
+        </div>
+        <div id="mode-one" style="margin-top:16px">
+          <div class="card"><div class="row"><span>Payment 2 · due 3 Nov</span><span class="money">GHS 800.00</span></div></div>
+        </div>
+        <div id="mode-part" style="margin-top:16px" hidden>
+          <label class="muted" for="partAmt" style="display:block;margin-bottom:6px">Amount to pay now</label>
+          <div class="field"><b>GHS</b><input id="partAmt" inputmode="decimal" value="300.00"></div>
+          <p class="muted" id="partMsg" style="margin:8px 0 0">The rest of payment 2 (GHS 500.00) stays due on 3 Nov.</p>
+        </div>
+        <div id="mode-off" style="margin-top:16px" hidden>
+          <div class="card"><ul class="sched">
+            <li><span class="n">2</span><span class="what">Payment 2</span><span class="money">GHS 800.00</span></li>
+            <li><span class="n">3</span><span class="what">Payment 3</span><span class="money">GHS 800.00</span></li>
+            <li><span class="n">4</span><span class="what">Payment 4</span><span class="money">GHS 800.00</span></li>
+          </ul><div class="total"><span>To pay off the plan</span><span>GHS 2,400.00</span></div></div>
+          <div class="note" style="margin-top:12px"><i data-lucide="badge-check"></i><span>No extra charge for paying early. Your plan is interest-free.</span></div>
+        </div>
+        <h3>Pay with</h3>
+        <div class="card">
+          <div class="list-row"><i data-lucide="smartphone"></i>Mobile Money<span class="muted" style="font-weight:400;margin-left:auto">MTN · Telecel · AT</span></div>
+          <div class="list-row"><i data-lucide="credit-card"></i>Card •••• 4081<span class="chip info" style="margin-left:auto">Autopay off</span></div>
+        </div>
+        <p class="muted" style="margin-top:10px;display:flex;gap:6px;align-items:center"><i data-lucide="shield" style="width:15px"></i>Secured by Paystack. Your payment shows once Paystack confirms it.</p>
+      </div></div>
+      <div class="paybar"><button class="btn btn-gold" id="payBtn"><i data-lucide="lock"></i><span>Pay GHS 800.00</span></button></div>
+    </div>
+  </section>
+
+  <!-- S12 Defer -->
+  <section class="slot"><div class="slot-label"><b>S12</b> Move a payment back (deferment)</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Back"><i data-lucide="arrow-left"></i></button><h2>Move a payment back</h2></div>
+      <div class="scroll"><div class="pad">
+        <div class="card" style="text-align:center;padding:18px">
+          <div class="muted">One-off fee</div>
+          <div class="money" style="font-size:30px;margin:4px 0">GHS 80.00</div>
+          <div class="muted">10% of the GHS 800.00 left on payment 2</div>
+        </div>
+        <h3>New dates</h3>
+        <div class="card"><ul class="sched">
+          <li><span class="n">2</span><span class="what">Payment 2<small><s>3 Nov 2026</s> → 3 Dec 2026</small></span><span class="money">GHS 800.00</span></li>
+          <li><span class="n">3</span><span class="what">Payment 3<small><s>3 Dec 2026</s> → 3 Jan 2027</small></span><span class="money">GHS 800.00</span></li>
+          <li><span class="n">4</span><span class="what">Payment 4<small><s>3 Jan 2027</s> → 3 Feb 2027</small></span><span class="money">GHS 800.00</span></li>
+        </ul>
+        <div class="row" style="font-size:13px;margin-top:8px"><span>Total payable</span><span>GHS 4,050.00 → <b style="color:var(--navy)">GHS 4,130.00</b></span></div></div>
+        <div class="note" style="margin-top:12px"><i data-lucide="info"></i><span>It isn't a late payment and doesn't lower your limit. You can do this once on this plan.</span></div>
+        <label class="check" style="margin-top:14px"><input type="checkbox" id="deferAgree"><span>I agree to pay the GHS 80.00 fee now and to the new dates above.</span></label>
+      </div></div>
+      <div class="paybar"><button class="btn btn-gold" id="deferBtn" disabled><i data-lucide="lock"></i>Pay GHS 80.00 and move it</button></div>
+    </div>
+  </section>
+
+  <!-- S9 Result -->
+  <section class="slot"><div class="slot-label"><b>S9</b> Payment result (after Paystack)</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="scroll" style="display:flex;flex-direction:column">
+        <div class="center" style="margin-top:40px">
+          <div class="big-ico ok"><i data-lucide="check"></i></div>
+          <h2>Down payment received</h2>
+          <p>GHS 1,650.00 received for order ORD-20871.</p>
+          <p class="muted">Your order is waiting for approval. We'll message you as soon as it's approved, usually within a working day.</p>
+        </div>
+        <div class="pad">
+          <div class="card">
+            <ul class="steps">
+              <li><span class="s-ico" style="background:var(--success-bg);color:var(--success)"><i data-lucide="check"></i></span>Down payment paid</li>
+              <li><span class="s-ico"><i data-lucide="clipboard-check"></i></span>Tabital approves your order</li>
+              <li><span class="s-ico"><i data-lucide="truck"></i></span>Accra Phone Hub delivers</li>
+              <li><span class="s-ico"><i data-lucide="calendar"></i></span>Payment 2 due 3 Nov 2026</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="paybar"><button class="btn btn-gold">View my order</button></div>
+    </div>
+  </section>
+
+  <!-- S13 Identity -->
+  <section class="slot"><div class="slot-label"><b>S13</b> Verify identity (Smile ID)</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Back"><i data-lucide="arrow-left"></i></button><h2>Verify your identity</h2></div>
+      <div class="scroll"><div class="pad">
+        <div class="center" style="padding:16px 8px 8px">
+          <div class="big-ico navy"><i data-lucide="scan-face"></i></div>
+          <p>We need to check it's really you before you can use a payment plan. It takes about 2 minutes.</p>
+        </div>
+        <div class="card"><ul class="steps">
+          <li><span class="s-ico"><i data-lucide="id-card"></i></span><span>Your Ghana Card number</span></li>
+          <li><span class="s-ico"><i data-lucide="camera"></i></span><span>A selfie, with a quick liveness check</span></li>
+          <li><span class="s-ico"><i data-lucide="badge-check"></i></span><span>Usually confirmed in minutes</span></li>
+        </ul></div>
+        <div class="note" style="margin-top:12px"><i data-lucide="lock"></i><span>Smile ID checks your card and selfie for Tabital. Your photos stay with Smile ID. Tabital keeps the result.</span></div>
+        <label class="check" style="margin-top:14px"><input type="checkbox" checked><span>I agree that Smile ID can check my Ghana Card and selfie for Tabital, as set out in the <a href="#">Privacy Policy</a>.</span></label>
+        <p class="muted" style="margin-top:10px">You have 3 attempts.</p>
+      </div></div>
+      <div class="paybar"><button class="btn btn-gold"><i data-lucide="scan-face"></i>Start verification</button></div>
+    </div>
+  </section>
+
+  <!-- S14 Credit limit -->
+  <section class="slot"><div class="slot-label"><b>S14</b> Credit limit and why</div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Back"><i data-lucide="arrow-left"></i></button><h2>Your limit</h2></div>
+      <div class="scroll"><div class="pad">
+        <div class="card">
+          <div class="muted">Available to spend</div>
+          <div class="money" style="font-size:30px;margin:2px 0 12px">GHS 1,000.00</div>
+          <div class="meter" aria-label="GHS 4,000 used of GHS 5,000"><i style="width:80%;background:var(--navy-2)"></i><i style="width:20%;background:var(--gold)"></i></div>
+          <div class="legend"><span><i style="background:var(--navy-2)"></i>In plans GHS 4,000</span><span><i style="background:var(--gold)"></i>Available GHS 1,000</span></div>
+          <div class="row" style="margin-top:14px;font-size:14px"><span>Total limit</span><span class="money">GHS 5,000.00</span></div>
+          <div class="row" style="margin-top:6px;font-size:14px"><span>Tier</span><span class="chip info">Medium</span></div>
+        </div>
+        <h3>How it grows</h3>
+        <div class="card"><ul class="steps">
+          <li><span class="s-ico" style="background:var(--success-bg);color:var(--success)"><i data-lucide="trending-up"></i></span><span>Each plan paid on time adds to your limit</span></li>
+          <li><span class="s-ico" style="background:var(--error-bg);color:var(--error)"><i data-lucide="trending-down"></i></span><span>A late payment lowers it</span></li>
+          <li><span class="s-ico"><i data-lucide="lock"></i></span><span>While a payment is overdue, new plans are paused</span></li>
+        </ul></div>
+        <p class="muted" style="margin-top:10px">Your limit is checked against the full price of what you buy.</p>
+      </div></div>
+      <nav class="nav"><a href="#"><i data-lucide="home"></i>Home</a><a href="#"><i data-lucide="shopping-bag"></i>Shop</a><a href="#"><i data-lucide="calendar-range"></i>Plans</a><a class="on" href="#"><i data-lucide="user-round"></i>Account</a></nav>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const fmt = n => 'GHS ' + n.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const PRICE = 4000, DELIVERY = 50;
+// Sample quotes (the §5.3 rules). In the app these come from POST /installment/calculate.
+const PLANS = [
+  { n: 4, label: 'Pay in 4', rate: 0.40 },
+  { n: 3, label: 'Pay in 3', rate: 0.50 },
+  { n: 2, label: 'Pay in 2', rate: 0.50 },
+  { n: 1, label: 'Pay in full', rate: 1 },
+  { n: 6, label: '6 months', off: true },
+];
+const DATES = ['3 Nov 2026', '3 Dec 2026', '3 Jan 2027'];
+let chosen = 4;
+
+function quote(p) {
+  const dp = Math.round(PRICE * p.rate * 100) / 100;
+  const deferred = p.n - 1, fb = PRICE - dp;
+  const inst = deferred ? Math.round(fb / deferred * 100) / 100 : 0;
+  const list = [];
+  for (let i = 0; i < deferred; i++) list.push(i === deferred - 1 ? Math.round((fb - inst * (deferred - 1)) * 100) / 100 : inst);
+  return { dp, list, due: dp + DELIVERY, total: PRICE + DELIVERY };
+}
+
+function renderPlans() {
+  const box = document.getElementById('planOptions');
+  box.innerHTML = PLANS.map(p => {
+    if (p.off) return `<button class="plan-opt off" role="radio" aria-checked="false" aria-disabled="true"><span class="radio"></span><span><div class="t">${p.label}</div><div class="s">Coming soon</div></span></button>`;
+    const q = quote(p);
+    const sub = p.n === 1 ? 'One payment today' : `${Math.round(p.rate * 100)}% today, then ${p.n - 1} × ${fmt(q.list[0])}`;
+    return `<button class="plan-opt ${p.n === chosen ? 'on' : ''}" data-n="${p.n}" role="radio" aria-checked="${p.n === chosen}"><span class="radio"></span><span><div class="t">${p.label}</div><div class="s">${sub}</div></span><span class="money">${fmt(q.due)}</span></button>`;
+  }).join('');
+  box.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { chosen = +b.dataset.n; renderPlans(); });
+  const q = quote(PLANS.find(p => p.n === chosen));
+  document.getElementById('planSched').innerHTML =
+    `<li class="now"><span class="n">1</span><span class="what">Payment 1, ${chosen === 1 ? 'full price' : 'down payment'}<small>Today · ${fmt(q.dp)} + ${fmt(DELIVERY)} delivery</small></span><span class="money">${fmt(q.due)}</span></li>` +
+    q.list.map((a, i) => `<li><span class="n">${i + 2}</span><span class="what">Payment ${i + 2}<small>${DATES[i]}</small></span><span class="money">${fmt(a)}</span></li>`).join('');
+  document.getElementById('planTotal').textContent = fmt(q.total);
+  document.getElementById('planDue').textContent = fmt(q.due);
+}
+renderPlans();
+
+// Checkout: pay only after agreeing
+const terms = document.getElementById('terms');
+terms.onchange = () => document.getElementById('payDown').disabled = !terms.checked;
+
+// Pay modes
+const payBtn = document.querySelector('#payBtn span');
+const partAmt = document.getElementById('partAmt');
+function partLabel() {
+  const v = parseFloat(partAmt.value) || 0;
+  const msg = document.getElementById('partMsg');
+  const ok = v >= 10 && v <= 800;
+  msg.style.color = ok ? '' : 'var(--error)';
+  msg.textContent = v > 800 ? "That's more than the GHS 800.00 due. To pay more, pay off the plan."
+    : v < 10 ? 'The smallest part payment is GHS 10.00.'
+    : `The rest of payment 2 (${fmt(800 - v)}) stays due on 3 Nov.`;
+  payBtn.textContent = 'Pay ' + fmt(v);
+  document.getElementById('payBtn').disabled = !ok;
+}
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.seg button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); });
+  ['one', 'part', 'off'].forEach(m => document.getElementById('mode-' + m).hidden = m !== b.dataset.mode);
+  document.getElementById('payBtn').disabled = false;
+  if (b.dataset.mode === 'one') payBtn.textContent = 'Pay ' + fmt(800);
+  if (b.dataset.mode === 'off') payBtn.textContent = 'Pay ' + fmt(2400);
+  if (b.dataset.mode === 'part') partLabel();
+});
+partAmt.oninput = partLabel;
+
+// Deferment: only after agreeing
+const agree = document.getElementById('deferAgree');
+agree.onchange = () => document.getElementById('deferBtn').disabled = !agree.checked;
+
+if (window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>
