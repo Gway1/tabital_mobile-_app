@@ -10,4 +10,7 @@ abstract final class AppConfig {
   static const helpUrl = 'https://tabitalpay.com/help/';
   static const termsUrl = 'https://tabitalpay.com/elementor-page-3332/';
   static const privacyUrl = 'https://tabitalpay.com/privacy-policy/';
+
+  /// The company line for the Account page (handoff §4: the legal entity).
+  static const legalLine = 'Tabital Pay Ltd · Registration CS 117960626';
 }

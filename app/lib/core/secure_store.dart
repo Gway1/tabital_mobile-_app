@@ -58,6 +58,18 @@ class SessionStore {
     await _store.delete(_tokenKey);
   }
 
+  // ---- Offline copy of Home and Plans (G13) ----
+  // Kept in the same Keystore-backed store as the token, never on shared storage. Only the plans
+  // list and the Home summary are cached: nothing from identity, cards or payments in progress.
+
+  static const _cacheKey = 'tabital_plans_cache';
+
+  Future<String?> readCache() => _store.read(_cacheKey);
+  Future<void> writeCache(String json) => _store.write(_cacheKey, json);
+
+  /// On every sign-in and sign-out, so one person never sees another's plans offline.
+  Future<void> clearCache() => _store.delete(_cacheKey);
+
   Future<String> deviceId() async {
     if (_deviceId != null) return _deviceId!;
     var id = await _store.read(_deviceKey);

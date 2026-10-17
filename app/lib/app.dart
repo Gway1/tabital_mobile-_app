@@ -3,11 +3,15 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'app_scope.dart';
+import 'core/app_lock.dart';
 import 'core/paystack_checkout.dart';
 import 'core/secure_window.dart';
 import 'features/account/account_screen.dart';
 import 'features/account/limit_screen.dart';
 import 'features/auth/auth_controller.dart';
+import 'features/cards/cards_screen.dart';
+import 'features/auth/forgot_password_screen.dart';
+import 'features/auth/lock_screen.dart';
 import 'features/auth/sign_in_screen.dart';
 import 'features/auth/sign_up_screen.dart';
 import 'features/auth/welcome_screen.dart';
@@ -24,13 +28,15 @@ import 'features/shop/checkout_screen.dart';
 import 'features/shop/orders_screen.dart';
 import 'features/shop/product_screen.dart';
 import 'features/shop/shop_screen.dart';
+import 'features/support/notifications_screen.dart';
+import 'features/support/report_problem_screen.dart';
 import 'ui/theme.dart';
 import 'ui/tokens.dart';
 
 int _id(GoRouterState s, [String name = 'id']) => int.tryParse(s.pathParameters[name] ?? '') ?? 0;
 
 GoRouter buildRouter(AuthController auth) {
-  const signedOutPaths = {'/welcome', '/sign-in', '/sign-up'};
+  const signedOutPaths = {'/welcome', '/sign-in', '/sign-up', '/forgot-password'};
   return GoRouter(
     initialLocation: '/home',
     refreshListenable: auth,
@@ -56,6 +62,7 @@ GoRouter buildRouter(AuthController auth) {
         builder: (_, state) => SignInScreen(initialPhone: state.extra is String ? state.extra as String : null),
       ),
       GoRoute(path: '/sign-up', builder: (_, _) => const SignUpScreen()),
+      GoRoute(path: '/forgot-password', builder: (_, _) => const ForgotPasswordScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => _TabShell(shell: shell),
         branches: [
@@ -96,7 +103,8 @@ GoRouter buildRouter(AuthController auth) {
                 routes: [
                   GoRoute(path: 'orders', builder: (_, _) => const OrdersScreen()),
                   GoRoute(path: 'identity', builder: (_, _) => const IdentityScreen()),
-              GoRoute(path: 'limit', builder: (_, _) => const LimitScreen()),
+                  GoRoute(path: 'limit', builder: (_, _) => const LimitScreen()),
+                  GoRoute(path: 'cards', builder: (_, _) => const CardsScreen()),
                 ],
               ),
             ],
@@ -110,8 +118,14 @@ GoRouter buildRouter(AuthController auth) {
         routes: [
           GoRoute(
             path: 'pay',
-            builder: (_, s) =>
-                PayScreen(planId: _id(s), initialMode: s.uri.queryParameters['mode'] == 'part' ? PayMode.part : PayMode.instalment),
+            builder: (_, s) => PayScreen(
+              planId: _id(s),
+              initialMode: s.uri.queryParameters['mode'] == 'part' ? PayMode.part : PayMode.instalment,
+            ),
+          ),
+          GoRoute(
+            path: 'report',
+            builder: (_, s) => ReportProblemScreen(planId: _id(s)),
           ),
           GoRoute(
             path: 'defer',
@@ -119,6 +133,7 @@ GoRouter buildRouter(AuthController auth) {
           ),
         ],
       ),
+      GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(
         path: '/payment-result/:ref',
         builder: (_, s) => PaymentResultScreen(reference: s.pathParameters['ref'] ?? ''),
@@ -134,9 +149,13 @@ class TabitalApp extends StatefulWidget {
     required this.customer,
     this.checkout = const WebViewCheckoutLauncher(),
     this.camera = const SmileWebCamera(),
+    this.lock,
     this.googleFonts = true,
   });
   final AuthController auth;
+
+  /// The app lock (G9). Null in tests that don't need it.
+  final AppLock? lock;
   final CustomerRepository customer;
   final CheckoutLauncher checkout;
   final SelfieCamera camera;
@@ -146,7 +165,7 @@ class TabitalApp extends StatefulWidget {
   State<TabitalApp> createState() => _TabitalAppState();
 }
 
-class _TabitalAppState extends State<TabitalApp> {
+class _TabitalAppState extends State<TabitalApp> with WidgetsBindingObserver {
   late final GoRouter _router = buildRouter(widget.auth);
   final _secure = SecureWindow();
 
@@ -155,6 +174,21 @@ class _TabitalAppState extends State<TabitalApp> {
     super.initState();
     // Hide payment and identity screens from screenshots and the app switcher (M2)
     _router.routerDelegate.addListener(_onRoute);
+    WidgetsBinding.instance.addObserver(this);
+    widget.auth.addListener(_onAuth);
+  }
+
+  // The app lock times the background and checks again on return (G9)
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final lock = widget.lock;
+    if (lock == null || widget.auth.status != AuthStatus.signedIn) return;
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) lock.paused();
+    if (state == AppLifecycleState.resumed) lock.resumed();
+  }
+
+  void _onAuth() {
+    if (widget.auth.status == AuthStatus.signedOut) widget.lock?.clear();
   }
 
   void _onRoute() => _secure.forLocation(_router.routerDelegate.currentConfiguration.uri.path);
@@ -162,6 +196,8 @@ class _TabitalAppState extends State<TabitalApp> {
   @override
   void dispose() {
     _router.routerDelegate.removeListener(_onRoute);
+    WidgetsBinding.instance.removeObserver(this);
+    widget.auth.removeListener(_onAuth);
     _router.dispose();
     super.dispose();
   }
@@ -179,6 +215,29 @@ class _TabitalAppState extends State<TabitalApp> {
         theme: buildTheme(googleFonts: widget.googleFonts),
         themeMode: ThemeMode.light, // the approved design is light only, even when the phone is in dark mode
         routerConfig: _router,
+        // While locked, the lock screen covers everything (nothing behind it is readable)
+        builder: (context, child) {
+          final lock = widget.lock;
+          if (lock == null) return child ?? const SizedBox.shrink();
+          return ListenableBuilder(
+            listenable: lock,
+            builder: (context, _) => Stack(
+              children: [
+                ?child,
+                if (lock.locked)
+                  Positioned.fill(
+                    child: LockScreen(
+                      lock: lock,
+                      onSignInAgain: () {
+                        lock.clear();
+                        widget.auth.signOut();
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -195,17 +254,19 @@ class _TabShell extends StatelessWidget {
       body: shell,
       // `.nav`: white, a thin line on top, navy when chosen
       bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: Tp.line))),
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Tp.line)),
+        ),
         child: NavigationBar(
-        selectedIndex: shell.currentIndex,
-        onDestinationSelected: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
-        destinations: const [
-          NavigationDestination(icon: Icon(LucideIcons.house), label: 'Home'),
-          NavigationDestination(icon: Icon(LucideIcons.shoppingBag), label: 'Shop'),
-          NavigationDestination(icon: Icon(LucideIcons.calendarRange), label: 'Plans'),
-          NavigationDestination(icon: Icon(LucideIcons.userRound), label: 'Account'),
-        ],
-      ),
+          selectedIndex: shell.currentIndex,
+          onDestinationSelected: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
+          destinations: const [
+            NavigationDestination(icon: Icon(LucideIcons.house), label: 'Home'),
+            NavigationDestination(icon: Icon(LucideIcons.shoppingBag), label: 'Shop'),
+            NavigationDestination(icon: Icon(LucideIcons.calendarRange), label: 'Plans'),
+            NavigationDestination(icon: Icon(LucideIcons.userRound), label: 'Account'),
+          ],
+        ),
       ),
     );
   }

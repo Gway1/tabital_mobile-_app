@@ -77,93 +77,120 @@ class _DeferScreenState extends State<DeferScreen> {
   Widget _body(DefermentQuote q) {
     final t = Theme.of(context).textTheme;
     if (!q.allowed) {
-      return ListView(padding: pagePadding, children: [
-        Notice(
-          q.reasons.isEmpty ? "This payment can't be moved." : q.reasons.join('\n'),
-          title: "You can't move this payment",
-          tone: NoticeTone.warn,
-        ),
-      ]);
+      return ListView(
+        padding: pagePadding,
+        children: [
+          Notice(
+            q.reasons.isEmpty ? "This payment can't be moved." : q.reasons.join('\n'),
+            title: "You can't move this payment",
+            tone: NoticeTone.warn,
+          ),
+        ],
+      );
     }
     final months = '${q.months} month${q.months == 1 ? '' : 's'}';
     final canPay = _agree && q.onlinePayment && !_starting;
-    return Column(children: [
-      Expanded(
-        child: ListView(padding: pagePadding, children: [
-          VCard(
-            padding: const EdgeInsets.all(18),
-            child: Column(children: [
-              Text('One-off fee', style: t.bodySmall),
-              const SizedBox(height: 4),
-              Text(formatPesewas(q.fee), key: const Key('defer-fee'), style: moneyStyle(context, 30)),
-              const SizedBox(height: 4),
-              Text('${q.feePercentage}% of the ${formatPesewas(q.feeBase)} left on payment ${q.installmentNumber}',
-                  key: const Key('defer-fee-basis'), textAlign: TextAlign.center, style: t.bodySmall),
-            ]),
-          ),
-          const SectionTitle('New dates'),
-          VCard(
-            padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
-            child: Column(children: [
-              Lined([
-                for (final m in q.moved)
-                  SchedRow(
-                    number: m.number,
-                    title: 'Payment ${m.number}',
-                    subWidget: Text.rich(
-                      TextSpan(style: t.bodySmall?.copyWith(fontSize: 12), children: [
-                        TextSpan(text: formatDate(m.dueDate), style: const TextStyle(decoration: TextDecoration.lineThrough)),
-                        TextSpan(text: ' → ${formatDate(m.newDueDate)}'),
-                      ]),
-                      key: Key('defer-move-${m.number}'),
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: pagePadding,
+            children: [
+              VCard(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  children: [
+                    Text('One-off fee', style: t.bodySmall),
+                    const SizedBox(height: 4),
+                    Text(formatPesewas(q.fee), key: const Key('defer-fee'), style: moneyStyle(context, 30)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${q.feePercentage}% of the ${formatPesewas(q.feeBase)} left on payment ${q.installmentNumber}',
+                      key: const Key('defer-fee-basis'),
+                      textAlign: TextAlign.center,
+                      style: t.bodySmall,
                     ),
-                    amount: formatPesewas(m.amount),
-                  ),
-              ]),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(child: Text('Total payable', style: t.bodyMedium?.copyWith(fontSize: 13))),
-                Text.rich(
-                  TextSpan(style: t.bodyMedium?.copyWith(fontSize: 13), children: [
-                    TextSpan(text: '${formatPesewas(q.totalBefore)} → '),
-                    TextSpan(text: formatPesewas(q.totalAfter), style: const TextStyle(color: Tp.navy, fontWeight: FontWeight.w700)),
-                  ]),
-                  key: const Key('defer-totals'),
+                  ],
                 ),
-              ]),
-            ]),
+              ),
+              const SectionTitle('New dates'),
+              VCard(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+                child: Column(
+                  children: [
+                    Lined([
+                      for (final m in q.moved)
+                        SchedRow(
+                          number: m.number,
+                          title: 'Payment ${m.number}',
+                          subWidget: Text.rich(
+                            TextSpan(
+                              style: t.bodySmall?.copyWith(fontSize: 12),
+                              children: [
+                                TextSpan(
+                                  text: formatDate(m.dueDate),
+                                  style: const TextStyle(decoration: TextDecoration.lineThrough),
+                                ),
+                                TextSpan(text: ' → ${formatDate(m.newDueDate)}'),
+                              ],
+                            ),
+                            key: Key('defer-move-${m.number}'),
+                          ),
+                          amount: formatPesewas(m.amount),
+                        ),
+                    ]),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: Text('Total payable', style: t.bodyMedium?.copyWith(fontSize: 13))),
+                        Text.rich(
+                          TextSpan(
+                            style: t.bodyMedium?.copyWith(fontSize: 13),
+                            children: [
+                              TextSpan(text: '${formatPesewas(q.totalBefore)} → '),
+                              TextSpan(
+                                text: formatPesewas(q.totalAfter),
+                                style: const TextStyle(color: Tp.navy, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                          key: const Key('defer-totals'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Note(
+                "It isn't a late payment and doesn't lower your limit, but this plan won't count towards a limit increase. "
+                'Payment ${q.installmentNumber} and the ones after it move $months later. '
+                'You can move a payment ${q.defermentsLeft} time${q.defermentsLeft == 1 ? '' : 's'} on this plan.',
+              ),
+              const SizedBox(height: 14),
+              CheckRow(
+                boxKey: const Key('defer-agree'),
+                value: _agree,
+                onChanged: (v) => setState(() => _agree = v),
+                child: Text('I agree to pay the ${formatPesewas(q.fee)} fee now and to the new dates above.'),
+              ),
+              if (!q.onlinePayment) ...[
+                const SizedBox(height: 12),
+                const Notice("Online payment isn't available right now, so the fee can't be paid yet.", tone: NoticeTone.warn),
+              ],
+              if (_error != null) ...[const SizedBox(height: 12), Notice(_error!, tone: NoticeTone.error)],
+            ],
           ),
-          const SizedBox(height: 12),
-          Note(
-            "It isn't a late payment and doesn't lower your limit, but this plan won't count towards a limit increase. "
-            'Payment ${q.installmentNumber} and the ones after it move $months later. '
-            'You can move a payment ${q.defermentsLeft} time${q.defermentsLeft == 1 ? '' : 's'} on this plan.',
-          ),
-          const SizedBox(height: 14),
-          CheckRow(
-            boxKey: const Key('defer-agree'),
-            value: _agree,
-            onChanged: (v) => setState(() => _agree = v),
-            child: Text('I agree to pay the ${formatPesewas(q.fee)} fee now and to the new dates above.'),
-          ),
-          if (!q.onlinePayment) ...[
-            const SizedBox(height: 12),
-            const Notice("Online payment isn't available right now, so the fee can't be paid yet.", tone: NoticeTone.warn),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Notice(_error!, tone: NoticeTone.error),
-          ],
-        ]),
-      ),
-      PayBar(
-        button: FilledButton.icon(
-          key: const Key('defer-button'),
-          onPressed: canPay ? () => _start(q) : null,
-          icon: _starting ? const ButtonSpinner() : const Icon(LucideIcons.lock, size: 18),
-          label: Text(_starting ? 'Opening secure checkout…' : 'Pay ${formatPesewas(q.fee)} and move it'),
         ),
-      ),
-    ]);
+        PayBar(
+          button: FilledButton.icon(
+            key: const Key('defer-button'),
+            onPressed: canPay ? () => _start(q) : null,
+            icon: _starting ? const ButtonSpinner() : const Icon(LucideIcons.lock, size: 18),
+            label: Text(_starting ? 'Opening secure checkout…' : 'Pay ${formatPesewas(q.fee)} and move it'),
+          ),
+        ),
+      ],
+    );
   }
 }

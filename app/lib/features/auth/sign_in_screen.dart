@@ -68,7 +68,10 @@ class _SignInScreenState extends State<SignInScreen> {
             children: [
               const Padding(
                 padding: EdgeInsets.only(bottom: Tp.s6),
-                child: Align(alignment: Alignment.centerLeft, child: TabitalMark(height: 36, withName: true, nameColor: Tp.navy)),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TabitalMark(height: 36, withName: true, nameColor: Tp.navy),
+                ),
               ),
               if (notice != null) _Banner(text: notice, tone: Tp.info, bg: Tp.infoBg, icon: LucideIcons.info),
               TextFormField(
@@ -108,9 +111,10 @@ class _SignInScreenState extends State<SignInScreen> {
                     : const Text('Sign in'),
               ),
               const SizedBox(height: Tp.s4),
-              const Text(
-                'Forgot your password? Reset it on tabitalpay.com. Resetting in the app is coming soon.',
-                textAlign: TextAlign.center,
+              TextButton(
+                key: const Key('forgot-password'),
+                onPressed: () => context.push('/forgot-password'),
+                child: const Text('Forgot your password?'),
               ),
               const SizedBox(height: Tp.s2),
               TextButton(onPressed: () => context.go('/sign-up'), child: const Text('New to Tabital? Create an account')),

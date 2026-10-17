@@ -60,7 +60,10 @@ class _ProductScreenState extends State<ProductScreen> {
       // Pay in 4 is the main plan; customers who can't use credit start on paying in full
       if (_chosen == null || o.option(_chosen!) == null) {
         final eligible = o.credit?.eligible ?? false;
-        setState(() => _chosen = (eligible ? o.option(4) : null)?.nPayments ?? o.option(1)?.nPayments ?? o.options.firstOrNull?.nPayments);
+        setState(
+          () =>
+              _chosen = (eligible ? o.option(4) : null)?.nPayments ?? o.option(1)?.nPayments ?? o.options.firstOrNull?.nPayments,
+        );
       }
     }, onError: (_) {});
   }
@@ -81,11 +84,11 @@ class _ProductScreenState extends State<ProductScreen> {
           appBar: AppBar(title: Text(p?.name ?? 'Product', overflow: TextOverflow.ellipsis)),
           body: switch (snap.connectionState) {
             ConnectionState.done when snap.hasError => ErrorPanel(
-                message: errorText(snap.error, "Couldn't load this product."),
-                onRetry: () => setState(() {
-                  _product = AppScope.of(context).customer.product(widget.productId);
-                }),
-              ),
+              message: errorText(snap.error, "Couldn't load this product."),
+              onRetry: () => setState(() {
+                _product = AppScope.of(context).customer.product(widget.productId);
+              }),
+            ),
             ConnectionState.done => _body(p!),
             _ => const Center(child: CircularProgressIndicator()),
           },
@@ -106,95 +109,128 @@ class _ProductScreenState extends State<ProductScreen> {
         final blocked = chosen != null && !chosen.available;
         final canContinue = chosen != null && !pricing && !blocked && !needsIdentity && p.inStock;
 
-        return Column(children: [
-          Expanded(
-            child: ListView(children: [
-              SizedBox(height: 170, child: ProductImage(p.image, large: true)),
-              Padding(
-                padding: pagePadding,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const SizedBox(height: 14),
-                  Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(formatPesewas(p.price), style: moneyStyle(context, 22)),
-                        Text(
-                          [if (p.merchantName.isNotEmpty) 'Sold by ${p.merchantName}', p.inStock ? '${p.stock} in stock' : 'Out of stock']
-                              .join(' · '),
-                          style: t.bodySmall,
+        return Column(
+          children: [
+            Expanded(
+              child: ListView(
+                children: [
+                  SizedBox(height: 170, child: ProductImage(p.image, large: true)),
+                  Padding(
+                    padding: pagePadding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 14),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(formatPesewas(p.price), style: moneyStyle(context, 22)),
+                                  Text(
+                                    [
+                                      if (p.merchantName.isNotEmpty) 'Sold by ${p.merchantName}',
+                                      p.inStock ? '${p.stock} in stock' : 'Out of stock',
+                                    ].join(' · '),
+                                    style: t.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (p.inStock && p.stock > 1)
+                              _Stepper(quantity: _quantity, onChange: (q) => _setQuantity(q, p.stock), max: p.stock),
+                          ],
                         ),
-                      ]),
+                        if (p.description.isNotEmpty) ...[const SizedBox(height: 10), Text(p.description, style: t.bodyMedium)],
+                        const SectionTitle('How would you like to pay?'),
+                        if (pricing)
+                          const Padding(
+                            padding: EdgeInsets.all(Tp.s4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                                SizedBox(width: Tp.s2),
+                                Text('Pricing your plans…'),
+                              ],
+                            ),
+                          )
+                        else if (snap.hasError)
+                          ErrorPanel(message: errorText(snap.error, "We couldn't price this product right now."), onRetry: _price)
+                        else if (options != null) ...[
+                          for (final o in options.options)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: Tp.s2),
+                              child: PlanOptionTile(
+                                o,
+                                selected: o.nPayments == _chosen,
+                                onTap: () => setState(() => _chosen = o.nPayments),
+                              ),
+                            ),
+                          const _ComingSoonTile(),
+                          if (chosen != null) ...[const SectionTitle('Your schedule'), QuoteSchedule(chosen)],
+                          const SizedBox(height: 10),
+                          Text(
+                            'Interest-free when you pay on time. Late fees and moving a payment are explained before you confirm.',
+                            style: t.bodySmall,
+                          ),
+                        ],
+                        if (needsIdentity) ...[
+                          const SizedBox(height: 14),
+                          Note(
+                            'Verify your identity before you buy.',
+                            tone: NoteTone.warn,
+                            action: OutlinedButton(
+                              onPressed: () => context.push('/account/identity'),
+                              child: const Text('Verify now'),
+                            ),
+                          ),
+                        ] else if (blocked) ...[
+                          const SizedBox(height: 14),
+                          Note(chosen.blockedReason ?? 'This plan is not available to you right now.', tone: NoteTone.warn),
+                        ] else if (chosen != null &&
+                            chosen.usesCredit &&
+                            options?.credit != null &&
+                            options!.credit!.eligible) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(LucideIcons.circleCheck, size: 16, color: Tp.success),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Within your available limit of ${formatPesewas(options.credit!.availableLimit)}',
+                                  style: t.bodySmall?.copyWith(color: Tp.success),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
-                    if (p.inStock && p.stock > 1) _Stepper(quantity: _quantity, onChange: (q) => _setQuantity(q, p.stock), max: p.stock),
-                  ]),
-                  if (p.description.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(p.description, style: t.bodyMedium),
-                  ],
-                  const SectionTitle('How would you like to pay?'),
-                  if (pricing)
-                    const Padding(
-                      padding: EdgeInsets.all(Tp.s4),
-                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-                        SizedBox(width: Tp.s2),
-                        Text('Pricing your plans…'),
-                      ]),
-                    )
-                  else if (snap.hasError)
-                    ErrorPanel(message: errorText(snap.error, "We couldn't price this product right now."), onRetry: _price)
-                  else if (options != null) ...[
-                    for (final o in options.options)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: Tp.s2),
-                        child: PlanOptionTile(o, selected: o.nPayments == _chosen, onTap: () => setState(() => _chosen = o.nPayments)),
-                      ),
-                    const _ComingSoonTile(),
-                    if (chosen != null) ...[
-                      const SectionTitle('Your schedule'),
-                      QuoteSchedule(chosen),
-                    ],
-                    const SizedBox(height: 10),
-                    Text('Interest-free when you pay on time. Late fees and moving a payment are explained before you confirm.',
-                        style: t.bodySmall),
-                  ],
-                  if (needsIdentity) ...[
-                    const SizedBox(height: 14),
-                    Note('Verify your identity before you buy.',
-                        tone: NoteTone.warn,
-                        action: OutlinedButton(onPressed: () => context.push('/account/identity'), child: const Text('Verify now'))),
-                  ] else if (blocked) ...[
-                    const SizedBox(height: 14),
-                    Note(chosen.blockedReason ?? 'This plan is not available to you right now.', tone: NoteTone.warn),
-                  ] else if (chosen != null && chosen.usesCredit && options?.credit != null && options!.credit!.eligible) ...[
-                    const SizedBox(height: 10),
-                    Row(children: [
-                      const Icon(LucideIcons.circleCheck, size: 16, color: Tp.success),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text('Within your available limit of ${formatPesewas(options.credit!.availableLimit)}',
-                            style: t.bodySmall?.copyWith(color: Tp.success)),
-                      ),
-                    ]),
-                  ],
-                ]),
+                  ),
+                ],
               ),
-            ]),
-          ),
-          PayBar(
-            amount: chosen == null ? null : formatPesewas(chosen.dueNow),
-            amountKey: const Key('due-today'),
-            caption: 'Due today',
-            button: FilledButton(
-              key: const Key('continue'),
-              onPressed: canContinue
-                  ? () => context.push('/shop/product/${p.id}/checkout',
-                      extra: CheckoutArgs(product: p, options: options!, option: chosen, quantity: _quantity))
-                  : null,
-              child: const Text('Continue'),
             ),
-          ),
-        ]);
+            PayBar(
+              amount: chosen == null ? null : formatPesewas(chosen.dueNow),
+              amountKey: const Key('due-today'),
+              caption: 'Due today',
+              button: FilledButton(
+                key: const Key('continue'),
+                onPressed: canContinue
+                    ? () => context.push(
+                        '/shop/product/${p.id}/checkout',
+                        extra: CheckoutArgs(product: p, options: options!, option: chosen, quantity: _quantity),
+                      )
+                    : null,
+                child: const Text('Continue'),
+              ),
+            ),
+          ],
+        );
       },
     );
   }
@@ -208,23 +244,28 @@ class _Stepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(color: Tp.surface, border: Border.all(color: Tp.line), borderRadius: BorderRadius.circular(Tp.radius)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          IconButton(
-            tooltip: 'One fewer',
-            visualDensity: VisualDensity.compact,
-            onPressed: quantity > 1 ? () => onChange(quantity - 1) : null,
-            icon: const Icon(LucideIcons.minus, size: 18),
-          ),
-          Text('$quantity', key: const Key('quantity'), style: moneyStyle(context)),
-          IconButton(
-            tooltip: 'One more',
-            visualDensity: VisualDensity.compact,
-            onPressed: quantity < max ? () => onChange(quantity + 1) : null,
-            icon: const Icon(LucideIcons.plus, size: 18),
-          ),
-        ]),
-      );
+    decoration: BoxDecoration(
+      color: Tp.surface,
+      border: Border.all(color: Tp.line),
+      borderRadius: BorderRadius.circular(Tp.radius),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'One fewer',
+          onPressed: quantity > 1 ? () => onChange(quantity - 1) : null,
+          icon: const Icon(LucideIcons.minus, size: 18),
+        ),
+        Text('$quantity', key: const Key('quantity'), style: moneyStyle(context)),
+        IconButton(
+          tooltip: 'One more',
+          onPressed: quantity < max ? () => onChange(quantity + 1) : null,
+          icon: const Icon(LucideIcons.plus, size: 18),
+        ),
+      ],
+    ),
+  );
 }
 
 /// `.plan-opt`: a radio, the plan's name and what follows, and what's due today on the right.
@@ -240,9 +281,9 @@ class PlanOptionTile extends StatelessWidget {
     final sub = !o.available && o.blockedReason != null
         ? o.blockedReason!
         : o.installments == 0
-            ? 'One payment today'
-            : '${o.downPaymentPercentage.isEmpty ? '' : '${o.downPaymentPercentage}% '}today, '
-                'then ${o.installments} × ${formatPesewas(o.installmentAmount)}';
+        ? 'One payment today'
+        : '${o.downPaymentPercentage.isEmpty ? '' : '${o.downPaymentPercentage}% '}today, '
+              'then ${o.installments} × ${formatPesewas(o.installmentAmount)}';
     return Opacity(
       opacity: o.available ? 1 : .55,
       child: Semantics(
@@ -259,18 +300,23 @@ class PlanOptionTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: selected ? Tp.navy : Tp.line, width: selected ? 2 : 1.5),
             ),
-            child: Row(children: [
-              _Radio(on: selected),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(o.label, style: t.titleSmall),
-                  Text(sub, style: t.bodySmall?.copyWith(fontSize: 12)),
-                ]),
-              ),
-              const SizedBox(width: Tp.s2),
-              Text(formatPesewas(o.dueNow), style: moneyStyle(context)),
-            ]),
+            child: Row(
+              children: [
+                _Radio(on: selected),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(o.label, style: t.titleSmall),
+                      Text(sub, style: t.bodySmall?.copyWith(fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: Tp.s2),
+                Text(formatPesewas(o.dueNow), style: moneyStyle(context)),
+              ],
+            ),
           ),
         ),
       ),
@@ -288,15 +334,24 @@ class _ComingSoonTile extends StatelessWidget {
       opacity: .55,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(color: Tp.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: Tp.line, width: 1.5)),
-        child: Row(children: [
-          const _Radio(on: false),
-          const SizedBox(width: 12),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('6 and 12 months', style: t.titleSmall),
-            Text('Coming soon', style: t.bodySmall?.copyWith(fontSize: 12)),
-          ]),
-        ]),
+        decoration: BoxDecoration(
+          color: Tp.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Tp.line, width: 1.5),
+        ),
+        child: Row(
+          children: [
+            const _Radio(on: false),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('6 and 12 months', style: t.titleSmall),
+                Text('Coming soon', style: t.bodySmall?.copyWith(fontSize: 12)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -308,12 +363,21 @@ class _Radio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 20,
-        height: 20,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: on ? Tp.navy : Tp.line, width: 2)),
-        child: on ? Container(width: 10, height: 10, decoration: const BoxDecoration(color: Tp.navy, shape: BoxShape.circle)) : null,
-      );
+    width: 20,
+    height: 20,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: on ? Tp.navy : Tp.line, width: 2),
+    ),
+    child: on
+        ? Container(
+            width: 10,
+            height: 10,
+            decoration: const BoxDecoration(color: Tp.navy, shape: BoxShape.circle),
+          )
+        : null,
+  );
 }
 
 /// A quoted schedule: Payment 1 today (gold), then each monthly payment, then the total payable.
@@ -328,24 +392,31 @@ class QuoteSchedule extends StatelessWidget {
     final lines = option.schedule.where((l) => l.number >= from).toList();
     return VCard(
       padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
-      child: Column(children: [
-        Lined([
-          for (final l in lines)
-            if (l.number == 1)
-              SchedRow(
-                number: 1,
-                state: SchedState.now,
-                title: option.usesCredit ? 'Payment 1, down payment' : 'Payment 1, full price',
-                sub: l.deliveryFee > 0
-                    ? 'Today · ${formatPesewas(option.downPayment)} + ${formatPesewas(l.deliveryFee)} delivery'
-                    : 'Today',
-                amount: formatPesewas(l.amount),
-              )
-            else
-              SchedRow(number: l.number, title: 'Payment ${l.number}', sub: formatDate(l.dueDate), amount: formatPesewas(l.amount)),
-        ]),
-        TotalRow('Total payable', formatPesewas(option.totalPayable), valueKey: const Key('schedule-total')),
-      ]),
+      child: Column(
+        children: [
+          Lined([
+            for (final l in lines)
+              if (l.number == 1)
+                SchedRow(
+                  number: 1,
+                  state: SchedState.now,
+                  title: option.usesCredit ? 'Payment 1, down payment' : 'Payment 1, full price',
+                  sub: l.deliveryFee > 0
+                      ? 'Today · ${formatPesewas(option.downPayment)} + ${formatPesewas(l.deliveryFee)} delivery'
+                      : 'Today',
+                  amount: formatPesewas(l.amount),
+                )
+              else
+                SchedRow(
+                  number: l.number,
+                  title: 'Payment ${l.number}',
+                  sub: formatDate(l.dueDate),
+                  amount: formatPesewas(l.amount),
+                ),
+          ]),
+          TotalRow('Total payable', formatPesewas(option.totalPayable), valueKey: const Key('schedule-total')),
+        ],
+      ),
     );
   }
 }

@@ -129,12 +129,18 @@ class TabitalMark extends StatelessWidget {
       image: true,
       child: ExcludeSemantics(
         child: withName
-            ? Row(mainAxisSize: MainAxisSize.min, children: [
-                mark,
-                SizedBox(width: height * 0.3),
-                Text('Tabital Pay',
-                    style: Theme.of(context).textTheme.titleLarge!.copyWith(color: nameColor, fontSize: height * 0.55, fontWeight: FontWeight.w700)),
-              ])
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  mark,
+                  SizedBox(width: height * 0.3),
+                  Text(
+                    'Tabital Pay',
+                    style: Theme.of(context).textTheme.titleLarge!
+                        .copyWith(color: nameColor, fontSize: height * 0.55, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              )
             : mark,
       ),
     );
@@ -151,22 +157,22 @@ class Notice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Note(
-        text,
-        title: title,
-        action: action,
-        icon: switch (tone) {
-          NoticeTone.info => LucideIcons.info,
-          NoticeTone.warn => LucideIcons.triangleAlert,
-          NoticeTone.error => LucideIcons.circleAlert,
-          NoticeTone.success => LucideIcons.circleCheck,
-        },
-        tone: switch (tone) {
-          NoticeTone.info => NoteTone.info,
-          NoticeTone.warn => NoteTone.warn,
-          NoticeTone.error => NoteTone.error,
-          NoticeTone.success => NoteTone.success,
-        },
-      );
+    text,
+    title: title,
+    action: action,
+    icon: switch (tone) {
+      NoticeTone.info => LucideIcons.info,
+      NoticeTone.warn => LucideIcons.triangleAlert,
+      NoticeTone.error => LucideIcons.circleAlert,
+      NoticeTone.success => LucideIcons.circleCheck,
+    },
+    tone: switch (tone) {
+      NoticeTone.info => NoteTone.info,
+      NoticeTone.warn => NoteTone.warn,
+      NoticeTone.error => NoteTone.error,
+      NoticeTone.success => NoteTone.success,
+    },
+  );
 }
 
 enum NoticeTone { info, warn, error, success }

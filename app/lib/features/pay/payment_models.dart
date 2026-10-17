@@ -10,7 +10,8 @@ class CheckoutStart {
   final Uri authorizationUrl;
   final int amount; // pesewas, what Paystack will charge
 
-  /// Null when the response has no checkout page (Paystack off, or it couldn't be reached).
+  /// Null when the response has no checkout page (Paystack off, or it couldn't be reached), or no
+  /// amount to show the customer first (G18).
   static CheckoutStart? tryParse(Object? res) {
     if (res is! Map) return null;
     final ref = res['reference'];
@@ -18,7 +19,10 @@ class CheckoutStart {
     if (ref is! String || ref.isEmpty || url is! String || url.isEmpty) return null;
     final uri = Uri.tryParse(url);
     if (uri == null || !isPaystackCheckoutUrl(uri)) return null; // only Paystack's own checkout pages
-    return CheckoutStart(reference: ref, authorizationUrl: uri, amount: toPesewas(res['amount']) ?? 0);
+    // G18: no amount, no checkout. The customer must always see what Paystack will charge.
+    final amount = toPesewas(res['amount']);
+    if (amount == null || amount <= 0) return null;
+    return CheckoutStart(reference: ref, authorizationUrl: uri, amount: amount);
   }
 }
 

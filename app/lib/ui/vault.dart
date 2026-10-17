@@ -15,23 +15,32 @@ const pagePadding = EdgeInsets.fromLTRB(Tp.s4, 0, Tp.s4, Tp.s4);
 
 /// `.card`: white, a thin line, radius 14, padding 14.
 class VCard extends StatelessWidget {
-  const VCard({super.key, required this.child, this.padding = const EdgeInsets.all(14), this.color = Tp.surface, this.border = true});
+  const VCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+    this.color = Tp.surface,
+    this.border = true,
+  });
   final Widget child;
   final EdgeInsets padding;
   final Color color;
   final bool border;
 
+  // A Material, not a coloured box, so taps on rows inside (list rows, radios) show their ink
   @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: padding,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(Tp.radiusLg),
-          border: border ? Border.all(color: Tp.line) : null,
-        ),
-        child: child,
-      );
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: Material(
+      color: color,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Tp.radiusLg),
+        side: border ? const BorderSide(color: Tp.line) : BorderSide.none,
+      ),
+      child: Padding(padding: padding, child: child),
+    ),
+  );
 }
 
 /// `h3`: a section heading, 18 above and 10 below.
@@ -41,9 +50,9 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 18, bottom: 10),
-        child: Text(text, style: Theme.of(context).textTheme.titleMedium),
-      );
+    padding: const EdgeInsets.only(top: 18, bottom: 10),
+    child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+  );
 }
 
 /// `.row`: a label on the left and a value (usually money) on the right.
@@ -58,15 +67,20 @@ class VRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: Text(label, style: labelStyle ?? Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: size))),
-          const SizedBox(width: Tp.s3),
-          Flexible(
-            child: Text(value, key: valueKey, textAlign: TextAlign.end, style: moneyStyle(context, size, valueColor)),
-          ),
-        ]),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(label, style: labelStyle ?? Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: size)),
+        ),
+        const SizedBox(width: Tp.s3),
+        Flexible(
+          child: Text(value, key: valueKey, textAlign: TextAlign.end, style: moneyStyle(context, size, valueColor)),
+        ),
+      ],
+    ),
+  );
 }
 
 /// `.total`: a bold row under a 2 px navy line.
@@ -82,12 +96,19 @@ class TotalRow extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.only(top: 12),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: Tp.navy, width: 2))),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(child: Text(label, style: style)),
-        const SizedBox(width: Tp.s3),
-        Flexible(child: Text(value, key: valueKey, textAlign: TextAlign.end, style: style)),
-      ]),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Tp.navy, width: 2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: Text(label, style: style)),
+          const SizedBox(width: Tp.s3),
+          Flexible(
+            child: Text(value, key: valueKey, textAlign: TextAlign.end, style: style),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -96,7 +117,16 @@ enum SchedState { normal, now, paid }
 
 /// `.sched li`: a numbered circle (gold for "today", green tick when paid), what it is, the amount.
 class SchedRow extends StatelessWidget {
-  const SchedRow({super.key, required this.number, required this.title, this.sub, this.subWidget, required this.amount, this.state = SchedState.normal, this.trailing});
+  const SchedRow({
+    super.key,
+    required this.number,
+    required this.title,
+    this.sub,
+    this.subWidget,
+    required this.amount,
+    this.state = SchedState.normal,
+    this.trailing,
+  });
   final int number;
   final String title;
   final String? sub;
@@ -115,30 +145,41 @@ class SchedRow extends StatelessWidget {
     };
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(children: [
-        Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-          child: state == SchedState.paid
-              ? Icon(LucideIcons.check, size: 14, color: fg)
-              : Text('$number', style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 12)),
-        ),
-        const SizedBox(width: Tp.s3),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: t.bodyMedium),
-            if (sub != null) Text(sub!, style: t.bodySmall?.copyWith(fontSize: 12)),
-            ?subWidget,
-          ]),
-        ),
-        const SizedBox(width: Tp.s2),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(amount, style: moneyStyle(context)),
-          ?trailing,
-        ]),
-      ]),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+            child: state == SchedState.paid
+                ? Icon(LucideIcons.check, size: 14, color: fg)
+                : Text(
+                    '$number',
+                    style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 12),
+                  ),
+          ),
+          const SizedBox(width: Tp.s3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: t.bodyMedium),
+                if (sub != null) Text(sub!, style: t.bodySmall?.copyWith(fontSize: 12)),
+                ?subWidget,
+              ],
+            ),
+          ),
+          const SizedBox(width: Tp.s2),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(amount, style: moneyStyle(context)),
+              ?trailing,
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -149,9 +190,11 @@ class Lined extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Column(children: [
-        for (final (i, c) in children.indexed) ...[if (i > 0) const Divider(), c],
-      ]);
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (final (i, c) in children.indexed) ...[if (i > 0) const Divider(), c],
+    ],
+  );
 }
 
 /// `.paybar`: sticky at the bottom. An amount and a caption on the left, the gold button on the right.
@@ -166,24 +209,36 @@ class PayBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(color: Tp.surface, border: Border(top: BorderSide(color: Tp.line))),
+      decoration: const BoxDecoration(
+        color: Tp.surface,
+        border: Border(top: BorderSide(color: Tp.line)),
+      ),
       child: SafeArea(
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: Tp.s4, vertical: 10),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Row(children: [
-              if (amount != null) ...[
-                Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(amount!, key: amountKey, style: moneyStyle(context, 15)),
-                  if (caption != null) Text(caption!, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12)),
-                ]),
-                const SizedBox(width: Tp.s3),
-              ],
-              Expanded(child: button),
-            ]),
-            ?below,
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  if (amount != null) ...[
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(amount!, key: amountKey, style: moneyStyle(context, 15)),
+                        if (caption != null) Text(caption!, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12)),
+                      ],
+                    ),
+                    const SizedBox(width: Tp.s3),
+                  ],
+                  Expanded(child: button),
+                ],
+              ),
+              ?below,
+            ],
+          ),
         ),
       ),
     );
@@ -214,17 +269,26 @@ class Note extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.only(top: 1), child: Icon(icon, size: 18, color: fg)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (title != null) Text(title!, style: style?.copyWith(fontWeight: FontWeight.w700)),
-            Text(text, style: style),
-            if (action != null) ...[const SizedBox(height: Tp.s2), action!],
-          ]),
-        ),
-      ]),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 18, color: fg),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null) Text(title!, style: style?.copyWith(fontWeight: FontWeight.w700)),
+                Text(text, style: style),
+                if (action != null) ...[const SizedBox(height: Tp.s2), action!],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -237,21 +301,35 @@ class CheckRow extends StatelessWidget {
   final Widget child;
   final Key? boxKey;
 
+  // The whole row toggles the box (48 dp target, design brief §6); links in the sentence still
+  // open, because their own tap wins over the row's.
   @override
-  Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(
-          width: 32,
-          height: 32,
-          child: Checkbox(key: boxKey, value: value, onChanged: (v) => onChanged(v ?? false)),
+  Widget build(BuildContext context) => MergeSemantics(
+    child: InkWell(
+      borderRadius: BorderRadius.circular(Tp.radius),
+      onTap: () => onChanged(!value),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: Checkbox(key: boxKey, value: value, onChanged: (v) => onChanged(v ?? false)),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 13, bottom: 8),
+                child: DefaultTextStyle.merge(style: const TextStyle(fontSize: 13, height: 1.45), child: child),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: DefaultTextStyle.merge(style: const TextStyle(fontSize: 13, height: 1.45), child: child),
-          ),
-        ),
-      ]);
+      ),
+    ),
+  );
 }
 
 enum IconTone { ok, navy, error, warn }
@@ -286,11 +364,13 @@ class StepsList extends StatelessWidget {
   final List<(IconData, String, IconTone)> steps;
 
   @override
-  Widget build(BuildContext context) => Column(children: [
-        for (final (i, (icon, text, tone)) in steps.indexed)
-          Padding(
-            padding: EdgeInsets.only(top: i == 0 ? 0 : 10),
-            child: Row(children: [
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (final (i, (icon, text, tone)) in steps.indexed)
+        Padding(
+          padding: EdgeInsets.only(top: i == 0 ? 0 : 10),
+          child: Row(
+            children: [
               Container(
                 width: 36,
                 height: 36,
@@ -299,13 +379,19 @@ class StepsList extends StatelessWidget {
                   color: tone == IconTone.ok ? Tp.successBg : (tone == IconTone.error ? Tp.errorBg : Tp.navySoft),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 18, color: tone == IconTone.ok ? Tp.success : (tone == IconTone.error ? Tp.error : Tp.navy2)),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: tone == IconTone.ok ? Tp.success : (tone == IconTone.error ? Tp.error : Tp.navy2),
+                ),
               ),
               const SizedBox(width: Tp.s3),
               Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
-            ]),
+            ],
           ),
-      ]);
+        ),
+    ],
+  );
 }
 
 /// `.seg`: three choices in a grey track; the chosen one is white.
@@ -320,31 +406,37 @@ class Segmented<T> extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(color: Tp.surface2, borderRadius: BorderRadius.circular(12)),
-      child: Row(children: [
-        for (final (v, label) in options)
-          Expanded(
-            child: Semantics(
-              selected: v == value,
-              button: true,
-              child: GestureDetector(
-                onTap: () => onChanged(v),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  height: 40,
-                  alignment: Alignment.center,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: v == value ? Tp.surface : Colors.transparent,
-                    borderRadius: BorderRadius.circular(9),
-                    boxShadow: v == value ? const [BoxShadow(color: Color(0x1F02163F), blurRadius: 3, offset: Offset(0, 1))] : null,
+      child: Row(
+        children: [
+          for (final (v, label) in options)
+            Expanded(
+              child: Semantics(
+                selected: v == value,
+                button: true,
+                child: GestureDetector(
+                  onTap: () => onChanged(v),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    height: 44, // with the 4 dp track padding, a 48 dp row
+                    alignment: Alignment.center,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: v == value ? Tp.surface : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                      boxShadow: v == value
+                          ? const [BoxShadow(color: Color(0x1F02163F), blurRadius: 3, offset: Offset(0, 1))]
+                          : null,
+                    ),
+                    child: Text(
+                      label,
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: v == value ? Tp.navy : Tp.muted),
+                    ),
                   ),
-                  child: Text(label,
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: v == value ? Tp.navy : Tp.muted)),
                 ),
               ),
             ),
-          ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -367,10 +459,16 @@ class VChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[Icon(icon, size: 13, color: fg), const SizedBox(width: 4)],
-        Text(text, style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w700)),
-      ]),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[Icon(icon, size: 13, color: fg), const SizedBox(width: 4)],
+          Text(
+            text,
+            style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -386,19 +484,24 @@ class ListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          child: Row(children: [
-            Icon(icon, size: 20, color: color == Tp.navy ? Tp.navy2 : color),
-            const SizedBox(width: Tp.s3),
-            Expanded(
-              child: Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600)),
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 13),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color == Tp.navy ? Tp.navy2 : color),
+          const SizedBox(width: Tp.s3),
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
             ),
-            trailing ?? (onTap == null ? const SizedBox.shrink() : const Icon(LucideIcons.chevronRight, size: 18, color: Tp.muted)),
-          ]),
-        ),
-      );
+          ),
+          trailing ?? (onTap == null ? const SizedBox.shrink() : const Icon(LucideIcons.chevronRight, size: 18, color: Tp.muted)),
+        ],
+      ),
+    ),
+  );
 }
 
 /// A link inside a sentence.

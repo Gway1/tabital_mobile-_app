@@ -15,6 +15,8 @@ void main() {
   group('M2: hidden from screenshots and the app switcher', () {
     test('payment, plan, checkout, result, identity and account screens', () {
       for (final path in [
+        '/home',
+        '/plans',
         '/plans/7',
         '/plans/7/pay',
         '/plans/7/defer',
@@ -30,7 +32,7 @@ void main() {
     });
 
     test('screens without personal figures stay normal', () {
-      for (final path in ['/welcome', '/sign-in', '/sign-up', '/shop', '/shop/product/11', '/plans', '/home']) {
+      for (final path in ['/welcome', '/sign-in', '/sign-up', '/shop', '/shop/product/11']) {
         expect(isSecureLocation(path), isFalse, reason: path);
       }
     });
@@ -102,8 +104,10 @@ void main() {
       final mark = find.byType(TabitalMark);
       expect(mark, findsOneWidget);
       expect(find.descendant(of: mark, matching: find.byType(Image)), findsOneWidget);
-      expect(tester.widget<Image>(find.descendant(of: mark, matching: find.byType(Image))).image,
-          isA<AssetImage>().having((a) => a.assetName, 'asset', 'assets/brand/mark.png'));
+      expect(
+        tester.widget<Image>(find.descendant(of: mark, matching: find.byType(Image))).image,
+        isA<AssetImage>().having((a) => a.assetName, 'asset', 'assets/brand/mark.png'),
+      );
       expect(find.bySemanticsLabel('Tabital Pay'), findsWidgets);
     });
   });

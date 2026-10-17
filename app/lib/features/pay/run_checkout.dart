@@ -11,10 +11,16 @@ import 'payment_models.dart';
 /// [agreed] is the amount the customer saw on the button. If the server's amount differs (a late
 /// fee was added, or a setting changed in between), the customer sees the new amount and agrees
 /// again before Paystack opens (CLAUDE.md §12). Returns false when they don't.
-Future<bool> runCheckout(BuildContext context, CheckoutStart start, {required int agreed, bool replace = true, String? onCancel}) async {
+Future<bool> runCheckout(
+  BuildContext context,
+  CheckoutStart start, {
+  required int agreed,
+  bool replace = true,
+  String? onCancel,
+}) async {
   final scope = AppScope.of(context);
   final router = GoRouter.of(context);
-  if (start.amount > 0 && start.amount != agreed) {
+  if (start.amount != agreed) {
     final ok = await showDialog<bool>(
       context: context,
       barrierDismissible: false,

@@ -67,7 +67,10 @@ ThemeData buildTheme({bool googleFonts = true}) {
       color: Tp.surface,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Tp.radiusLg), side: const BorderSide(color: Tp.line)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Tp.radiusLg),
+        side: const BorderSide(color: Tp.line),
+      ),
     ),
     dividerTheme: const DividerThemeData(color: Tp.line, space: 1, thickness: 1),
     // Gold is only for the one main action on a screen, always with navy text
@@ -110,9 +113,18 @@ ThemeData buildTheme({bool googleFonts = true}) {
       fillColor: Tp.surface,
       labelStyle: openSans(14, FontWeight.w400, Tp.muted),
       hintStyle: openSans(14, FontWeight.w400, Tp.muted),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Tp.line)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Tp.line)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Tp.navy, width: 1.5)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Tp.line),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Tp.line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Tp.navy, width: 1.5),
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     ),
     navigationBarTheme: NavigationBarThemeData(
@@ -122,9 +134,11 @@ ThemeData buildTheme({bool googleFonts = true}) {
       elevation: 0,
       height: 64,
       labelTextStyle: WidgetStateProperty.resolveWith(
-          (s) => openSans(11, FontWeight.w600, s.contains(WidgetState.selected) ? Tp.navy : Tp.muted)),
+        (s) => openSans(11, FontWeight.w600, s.contains(WidgetState.selected) ? Tp.navy : Tp.muted),
+      ),
       iconTheme: WidgetStateProperty.resolveWith(
-          (s) => IconThemeData(size: 22, color: s.contains(WidgetState.selected) ? Tp.navy : Tp.muted)),
+        (s) => IconThemeData(size: 22, color: s.contains(WidgetState.selected) ? Tp.navy : Tp.muted),
+      ),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: Tp.surface,

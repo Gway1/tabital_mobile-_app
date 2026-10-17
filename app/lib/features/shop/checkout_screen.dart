@@ -88,8 +88,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!mounted) return;
       final checkout = res.checkout;
       if (checkout != null) {
-        final paid = await runCheckout(context, checkout,
-            agreed: a.option.dueNow, onCancel: 'Your order is saved. You can pay its down payment from My orders.');
+        final paid = await runCheckout(
+          context,
+          checkout,
+          agreed: a.option.dueNow,
+          onCancel: 'Your order is saved. You can pay its down payment from My orders.',
+        );
         if (!paid && mounted) context.go('/account/orders');
         return;
       }
@@ -121,89 +125,100 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       appBar: AppBar(title: const Text('Review and pay')),
       body: Form(
         key: _form,
-        child: Column(children: [
-          Expanded(
-            child: ListView(padding: pagePadding, children: [
-              VCard(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${a.product.name}${a.quantity > 1 ? ' × ${a.quantity}' : ''} · ${o.label}', style: t.titleSmall),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    key: const Key('address'),
-                    controller: _address,
-                    minLines: 1,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Delivery to',
-                      hintText: 'House number, street, area and a landmark',
-                      prefixIcon: Icon(LucideIcons.mapPin, size: 18, color: Tp.muted),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: pagePadding,
+                children: [
+                  VCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${a.product.name}${a.quantity > 1 ? ' × ${a.quantity}' : ''} · ${o.label}', style: t.titleSmall),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          key: const Key('address'),
+                          controller: _address,
+                          minLines: 1,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Delivery to',
+                            hintText: 'House number, street, area and a landmark',
+                            prefixIcon: Icon(LucideIcons.mapPin, size: 18, color: Tp.muted),
+                          ),
+                          validator: (v) =>
+                              (v ?? '').trim().length < 10 ? 'Enter your delivery address (at least 10 characters)' : null,
+                        ),
+                      ],
                     ),
-                    validator: (v) => (v ?? '').trim().length < 10 ? 'Enter your delivery address (at least 10 characters)' : null,
                   ),
-                ]),
+                  SectionTitle(o.usesCredit ? 'Pay today (Payment 1)' : 'Pay today'),
+                  VCard(
+                    child: Column(
+                      children: [
+                        if (o.usesCredit)
+                          VRow(
+                            o.downPaymentPercentage.isEmpty ? 'Down payment' : 'Down payment (${o.downPaymentPercentage}%)',
+                            formatPesewas(o.downPayment),
+                          )
+                        else
+                          VRow('Product price', formatPesewas(a.options.productPrice)),
+                        if (o.deliveryFee > 0) VRow('Delivery fee', formatPesewas(o.deliveryFee)),
+                        TotalRow('Due today', formatPesewas(o.dueNow), valueKey: const Key('due-now')),
+                      ],
+                    ),
+                  ),
+                  if (o.installments > 0) ...[
+                    const SectionTitle('Then'),
+                    QuoteSchedule(o, from: 2),
+                  ] else ...[
+                    const SizedBox(height: 12),
+                    VRow('Total payable', formatPesewas(o.totalPayable), valueKey: const Key('schedule-total')),
+                  ],
+                  if (kf != null) ...[const SectionTitle('Key facts'), _KeyFactsList(kf, credit: o.usesCredit)],
+                  const SizedBox(height: 14),
+                  CheckRow(
+                    boxKey: const Key('agree'),
+                    value: _agree,
+                    onChanged: (v) => setState(() => _agree = v),
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          const TextSpan(text: 'I agree to the payment schedule above, the '),
+                          TextSpan(text: 'Terms', style: linkStyle, recognizer: _termsTap),
+                          const TextSpan(text: ' and the '),
+                          TextSpan(text: 'Privacy Policy', style: linkStyle, recognizer: _privacyTap),
+                          const TextSpan(text: '.'),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_error != null) ...[const SizedBox(height: 12), Notice(_error!, tone: NoticeTone.error)],
+                  const SizedBox(height: 10),
+                  Text(
+                    paystack ? 'Secured by Paystack. Your order goes for approval once the payment is confirmed.' : 'Online payment is off right now. Your order goes for approval, and we will contact you about the down payment.',
+                    style: t.bodySmall,
+                  ),
+                ],
               ),
-              SectionTitle(o.usesCredit ? 'Pay today (Payment 1)' : 'Pay today'),
-              VCard(
-                child: Column(children: [
-                  if (o.usesCredit)
-                    VRow(o.downPaymentPercentage.isEmpty ? 'Down payment' : 'Down payment (${o.downPaymentPercentage}%)',
-                        formatPesewas(o.downPayment))
-                  else
-                    VRow('Product price', formatPesewas(a.options.productPrice)),
-                  if (o.deliveryFee > 0) VRow('Delivery fee', formatPesewas(o.deliveryFee)),
-                  TotalRow('Due today', formatPesewas(o.dueNow), valueKey: const Key('due-now')),
-                ]),
-              ),
-              if (o.installments > 0) ...[
-                const SectionTitle('Then'),
-                QuoteSchedule(o, from: 2),
-              ] else ...[
-                const SizedBox(height: 12),
-                VRow('Total payable', formatPesewas(o.totalPayable), valueKey: const Key('schedule-total')),
-              ],
-              if (kf != null) ...[
-                const SectionTitle('Key facts'),
-                _KeyFactsList(kf, credit: o.usesCredit),
-              ],
-              const SizedBox(height: 14),
-              CheckRow(
-                boxKey: const Key('agree'),
-                value: _agree,
-                onChanged: (v) => setState(() => _agree = v),
-                child: Text.rich(TextSpan(children: [
-                  const TextSpan(text: 'I agree to the payment schedule above, the '),
-                  TextSpan(text: 'Terms', style: linkStyle, recognizer: _termsTap),
-                  const TextSpan(text: ' and the '),
-                  TextSpan(text: 'Privacy Policy', style: linkStyle, recognizer: _privacyTap),
-                  const TextSpan(text: '.'),
-                ])),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Notice(_error!, tone: NoticeTone.error),
-              ],
-              const SizedBox(height: 10),
-              Text(
-                paystack
-                    ? 'Secured by Paystack. Your order goes for approval once the payment is confirmed.'
-                    : 'Online payment is off right now. Your order goes for approval, and we will contact you about the down payment.',
-                style: t.bodySmall,
-              ),
-            ]),
-          ),
-          PayBar(
-            button: FilledButton.icon(
-              key: const Key('place-order'),
-              onPressed: _placing || !_agree ? null : _place,
-              icon: _placing ? const ButtonSpinner() : const Icon(LucideIcons.lock, size: 18),
-              label: Text(_placing
-                  ? 'Placing your order…'
-                  : paystack
-                      ? 'Pay ${formatPesewas(o.dueNow)}'
-                      : 'Place order'),
             ),
-          ),
-        ]),
+            PayBar(
+              button: FilledButton.icon(
+                key: const Key('place-order'),
+                onPressed: _placing || !_agree ? null : _place,
+                icon: _placing ? const ButtonSpinner() : const Icon(LucideIcons.lock, size: 18),
+                label: Text(
+                  _placing
+                      ? 'Placing your order…'
+                      : paystack
+                      ? 'Pay ${formatPesewas(o.dueNow)}'
+                      : 'Place order',
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -232,15 +247,23 @@ class _KeyFactsList extends StatelessWidget {
           '${kf.disputeResolutionDays > 0 ? ' (${kf.disputeResolutionDays} days)' : ''}.',
     ];
     final style = Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12.5, height: 1.55);
-    return Column(children: [
-      for (final f in facts)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(padding: const EdgeInsets.only(left: 4, right: 10), child: Text('•', style: style)),
-            Expanded(child: Text(f, style: style)),
-          ]),
-        ),
-    ]);
+    return Column(
+      children: [
+        for (final f in facts)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 10),
+                  child: Text('•', style: style),
+                ),
+                Expanded(child: Text(f, style: style)),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }

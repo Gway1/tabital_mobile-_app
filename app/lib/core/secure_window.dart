@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 /// Screens that show payment, plan or identity details. Android hides them from screenshots and
 /// the app-switcher preview (`FLAG_SECURE`, design brief §7). Matched against the route path.
 final secureRoutes = <RegExp>[
-  RegExp(r'^/plans/\d+(/.*)?$'), // plan detail, pay, move a payment back
+  RegExp(r'^/home$'), // the next payment, the limit and the plans
+  RegExp(r'^/plans(/.*)?$'), // plans, plan detail, pay, move a payment back
   RegExp(r'^/payment-result/'), // the result after Paystack
+  RegExp(r'^/notifications$'), // reminders name amounts and due dates
   RegExp(r'^/shop/product/\d+/checkout$'), // review and pay
   RegExp(r'^/account(/.*)?$'), // account, limit, orders, identity
 ];

@@ -46,11 +46,12 @@ Future<GoRouter> pumpApp(
   SelfieCamera? camera,
   SmileUploader? smile,
   Object? extra,
+  bool signedIn = true,
 }) async {
   tester.view.physicalSize = const Size(430 * 3, 2400 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  f.auth.status = AuthStatus.signedIn;
+  f.auth.status = signedIn ? AuthStatus.signedIn : AuthStatus.signedOut;
   final router = buildRouter(f.auth);
   addTearDown(router.dispose);
   await tester.pumpWidget(
@@ -70,7 +71,11 @@ Future<GoRouter> pumpApp(
 
 /// The JSON body of the last request to [path].
 Map<String, dynamic> lastBody(FakeApi f, String path) {
-  final r = f.requests.lastWhere((r) => r.url.path == path);
+  // The last request to [path] that sent a body (a screen may reload the same path with a GET after)
+  final r = f.requests.lastWhere(
+    (r) => r.url.path == path && r.method != 'GET',
+    orElse: () => f.requests.lastWhere((r) => r.url.path == path),
+  );
   return r.body.isEmpty ? <String, dynamic>{} : (jsonDecode(r.body) as Map).cast<String, dynamic>();
 }
 

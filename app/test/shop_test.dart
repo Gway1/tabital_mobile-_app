@@ -69,8 +69,10 @@ void main() {
     expect(find.text('Samsung Galaxy A55'), findsOneWidget);
     expect(find.text('GHS 4,000.00'), findsOneWidget);
     expect(find.text('GHS 1,600.00 today + delivery, then 3 × GHS 800.00'), findsOneWidget);
-    expect(tester.widget<Text>(find.byKey(const Key('shop-limit'))).textSpan!.toPlainText(),
-        'You can spend up to GHS 5,000.00 on a plan');
+    expect(
+      tester.widget<Text>(find.byKey(const Key('shop-limit'))).textSpan!.toPlainText(),
+      'You can spend up to GHS 5,000.00 on a plan',
+    );
   });
 
   testWidgets('asks the server to price every plan and starts on Pay in 4 for an eligible customer', (tester) async {
@@ -146,7 +148,10 @@ void main() {
       expect(find.text('Delivery fee'), findsOneWidget);
       expect(find.text('GHS 800.00'), findsNWidgets(3)); // every monthly payment listed
       // The key facts use the server's settings, not numbers written into the app
-      expect(find.textContaining('a late fee of 10% of it the day after the due date, and another 10% from 31 days'), findsOneWidget);
+      expect(
+        find.textContaining('a late fee of 10% of it the day after the due date, and another 10% from 31 days'),
+        findsOneWidget,
+      );
       expect(find.textContaining('never go above 25% of the total payable'), findsOneWidget);
       expect(find.textContaining('move one payment back 1 month for a 10% fee'), findsOneWidget);
       expect(find.textContaining('(21 days)'), findsOneWidget);

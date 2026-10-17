@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app_scope.dart';
+import '../../core/api_client.dart';
 import '../../core/format.dart';
 import '../../ui/tokens.dart';
 import '../../ui/vault.dart';
@@ -29,6 +30,8 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
   }
 
   Future<PaymentResult> _verify() async {
+    // Paystack sent no reference: there's nothing to ask the server (web payment-callback spec)
+    if (widget.reference.trim().isEmpty) throw ApiException('No payment reference was returned.');
     final customer = AppScope.of(context).customer;
     final r = await customer.verifyPayment(widget.reference);
     customer.changed(); // plans, orders and the limit may have changed
@@ -207,7 +210,16 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
 /// The prototype's S9: a big icon, the title and message, any next steps, and the main action in
 /// the bottom bar. [actions]: the last one is the main action; any others sit above it.
 class _Panel extends StatelessWidget {
-  const _Panel({required this.icon, required this.title, required this.text, this.tone = Tp.navy2, this.note, this.reference, this.actions = const [], this.extra});
+  const _Panel({
+    required this.icon,
+    required this.title,
+    required this.text,
+    this.tone = Tp.navy2,
+    this.note,
+    this.reference,
+    this.actions = const [],
+    this.extra,
+  });
   final IconData? icon;
   final Color tone;
   final String title;
@@ -226,34 +238,47 @@ class _Panel extends StatelessWidget {
       Tp.warn => IconTone.warn,
       _ => IconTone.navy,
     };
-    return Column(children: [
-      Expanded(
-        child: ListView(padding: const EdgeInsets.fromLTRB(Tp.s6, 56, Tp.s6, Tp.s4), children: [
-          Center(
-            child: icon == null
-                ? const SizedBox(width: 84, height: 84, child: Padding(padding: EdgeInsets.all(22), child: CircularProgressIndicator()))
-                : BigIcon(icon!, tone: iconTone),
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(Tp.s6, 56, Tp.s6, Tp.s4),
+            children: [
+              Center(
+                child: icon == null
+                    ? const SizedBox(
+                        width: 84,
+                        height: 84,
+                        child: Padding(padding: EdgeInsets.all(22), child: CircularProgressIndicator()),
+                      )
+                    : BigIcon(icon!, tone: iconTone),
+              ),
+              const SizedBox(height: 18),
+              Text(title, style: t.headlineSmall, textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(text, textAlign: TextAlign.center, key: const Key('result-text'), style: t.bodyMedium?.copyWith(height: 1.5)),
+              if (note != null) ...[
+                const SizedBox(height: 6),
+                Text(note!, textAlign: TextAlign.center, key: const Key('result-note'), style: t.bodySmall),
+              ],
+              if (extra != null) ...[const SizedBox(height: 24), extra!],
+              if (actions.length > 1) ...[
+                const SizedBox(height: 24),
+                for (final a in actions.take(actions.length - 1))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: Tp.s2),
+                    child: a,
+                  ),
+              ],
+              if (reference != null) ...[
+                const SizedBox(height: Tp.s4),
+                Text('Reference: $reference', textAlign: TextAlign.center, style: t.bodySmall?.copyWith(fontSize: 12)),
+              ],
+            ],
           ),
-          const SizedBox(height: 18),
-          Text(title, style: t.headlineSmall, textAlign: TextAlign.center),
-          const SizedBox(height: 8),
-          Text(text, textAlign: TextAlign.center, key: const Key('result-text'), style: t.bodyMedium?.copyWith(height: 1.5)),
-          if (note != null) ...[
-            const SizedBox(height: 6),
-            Text(note!, textAlign: TextAlign.center, key: const Key('result-note'), style: t.bodySmall),
-          ],
-          if (extra != null) ...[const SizedBox(height: 24), extra!],
-          if (actions.length > 1) ...[
-            const SizedBox(height: 24),
-            for (final a in actions.take(actions.length - 1)) Padding(padding: const EdgeInsets.only(bottom: Tp.s2), child: a),
-          ],
-          if (reference != null) ...[
-            const SizedBox(height: Tp.s4),
-            Text('Reference: $reference', textAlign: TextAlign.center, style: t.bodySmall?.copyWith(fontSize: 12)),
-          ],
-        ]),
-      ),
-      if (actions.isNotEmpty) PayBar(button: actions.last),
-    ]);
+        ),
+        if (actions.isNotEmpty) PayBar(button: actions.last),
+      ],
+    );
   }
 }

@@ -176,82 +176,96 @@ class _IdentityScreenState extends State<IdentityScreen> {
 
     final s = _status!;
     if (!s.configured) {
-      return ListView(padding: pagePadding, children: const [
-        Notice(
-          "Selfie verification isn't switched on yet. Upload your Ghana Card under Documents on tabitalpay.com "
-          'and our team will review it.',
-          tone: NoticeTone.info,
-        ),
-      ]);
+      return ListView(
+        padding: pagePadding,
+        children: const [
+          Notice(
+            "Selfie verification isn't switched on yet. Upload your Ghana Card under Documents on tabitalpay.com "
+            'and our team will review it.',
+            tone: NoticeTone.info,
+          ),
+        ],
+      );
     }
 
-    return Column(children: [
-      Expanded(
-        child: ListView(padding: pagePadding, children: [
-          if (s.checkStatus == 'blocked') ...[
-            Notice("We couldn't verify your identity. ${s.checkReasons.firstOrNull ?? ''}".trim(), tone: NoticeTone.error),
-            const SizedBox(height: Tp.s3),
-          ] else if (s.checkStatus == 'error') ...[
-            const Notice("The last check didn't finish. Please try again.", tone: NoticeTone.warn),
-            const SizedBox(height: Tp.s3),
-          ],
-          const SizedBox(height: Tp.s4),
-          const Center(child: BigIcon(LucideIcons.scanFace)),
-          const SizedBox(height: 18),
-          Text("We need to check it's really you before you can use a payment plan. It takes about 2 minutes.",
-              textAlign: TextAlign.center, style: t.bodyMedium?.copyWith(height: 1.5)),
-          const SizedBox(height: Tp.s4),
-          const VCard(
-            child: StepsList([
-              (LucideIcons.idCard, 'Your Ghana Card number', IconTone.navy),
-              (LucideIcons.camera, 'A selfie, with a quick liveness check', IconTone.navy),
-              (LucideIcons.badgeCheck, 'Usually confirmed in minutes', IconTone.navy),
-            ]),
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: pagePadding,
+            children: [
+              if (s.checkStatus == 'blocked') ...[
+                Notice("We couldn't verify your identity. ${s.checkReasons.firstOrNull ?? ''}".trim(), tone: NoticeTone.error),
+                const SizedBox(height: Tp.s3),
+              ] else if (s.checkStatus == 'error') ...[
+                const Notice("The last check didn't finish. Please try again.", tone: NoticeTone.warn),
+                const SizedBox(height: Tp.s3),
+              ],
+              const SizedBox(height: Tp.s4),
+              const Center(child: BigIcon(LucideIcons.scanFace)),
+              const SizedBox(height: 18),
+              Text(
+                "We need to check it's really you before you can use a payment plan. It takes about 2 minutes.",
+                textAlign: TextAlign.center,
+                style: t.bodyMedium?.copyWith(height: 1.5),
+              ),
+              const SizedBox(height: Tp.s4),
+              const VCard(
+                child: StepsList([
+                  (LucideIcons.idCard, 'Your Ghana Card number', IconTone.navy),
+                  (LucideIcons.camera, 'A selfie, with a quick liveness check', IconTone.navy),
+                  (LucideIcons.badgeCheck, 'Usually confirmed in minutes', IconTone.navy),
+                ]),
+              ),
+              const SizedBox(height: 12),
+              const Note(
+                'Smile ID checks your card and selfie for Tabital. Your photos stay with Smile ID. Tabital keeps the result. '
+                'Have good light, take off glasses or a hat, and make sure your name and date of birth match your Ghana Card.',
+                icon: LucideIcons.lock,
+              ),
+              const SizedBox(height: 14),
+              CheckRow(
+                boxKey: const Key('identity-consent'),
+                value: _consent,
+                onChanged: (v) => setState(() => _consent = v),
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      const TextSpan(
+                        text:
+                            'I agree that Smile ID can check my Ghana Card with the National Identification Authority and '
+                            'compare my selfie with my ID photo for Tabital, as set out in the ',
+                      ),
+                      TextSpan(text: 'Privacy Policy', style: linkStyle, recognizer: _privacyTap),
+                      const TextSpan(text: '.'),
+                    ],
+                  ),
+                ),
+              ),
+              if (_error != null) ...[const SizedBox(height: Tp.s3), Notice(_error!, tone: NoticeTone.error)],
+              const SizedBox(height: 10),
+              Text(
+                s.attemptsLeft == 0
+                    ? 'You have no attempts left. Please contact info@tabitalpay.com.'
+                    : 'You have ${s.attemptsLeft} attempt${s.attemptsLeft == 1 ? '' : 's'}.',
+                key: const Key('identity-attempts'),
+                style: t.bodySmall,
+              ),
+              const SizedBox(height: 6),
+              Text('Details wrong? Update them in your profile on tabitalpay.com first.', style: t.bodySmall),
+            ],
           ),
-          const SizedBox(height: 12),
-          const Note(
-            'Smile ID checks your card and selfie for Tabital. Your photos stay with Smile ID. Tabital keeps the result. '
-            'Have good light, take off glasses or a hat, and make sure your name and date of birth match your Ghana Card.',
-            icon: LucideIcons.lock,
-          ),
-          const SizedBox(height: 14),
-          CheckRow(
-            boxKey: const Key('identity-consent'),
-            value: _consent,
-            onChanged: (v) => setState(() => _consent = v),
-            child: Text.rich(TextSpan(children: [
-              const TextSpan(
-                  text: 'I agree that Smile ID can check my Ghana Card with the National Identification Authority and '
-                      'compare my selfie with my ID photo for Tabital, as set out in the '),
-              TextSpan(text: 'Privacy Policy', style: linkStyle, recognizer: _privacyTap),
-              const TextSpan(text: '.'),
-            ])),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: Tp.s3),
-            Notice(_error!, tone: NoticeTone.error),
-          ],
-          const SizedBox(height: 10),
-          Text(
-            s.attemptsLeft == 0
-                ? 'You have no attempts left. Please contact info@tabitalpay.com.'
-                : 'You have ${s.attemptsLeft} attempt${s.attemptsLeft == 1 ? '' : 's'}.',
-            key: const Key('identity-attempts'),
-            style: t.bodySmall,
-          ),
-          const SizedBox(height: 6),
-          Text('Details wrong? Update them in your profile on tabitalpay.com first.', style: t.bodySmall),
-        ]),
-      ),
-      PayBar(
-        button: FilledButton.icon(
-          key: const Key('identity-start'),
-          onPressed: _consent && s.attemptsLeft > 0 && !_starting ? _begin : null,
-          icon: _starting ? const ButtonSpinner() : const Icon(LucideIcons.scanFace, size: 18),
-          label: const Text('Start verification'),
         ),
-      ),
-    ]);
+        PayBar(
+          button: FilledButton.icon(
+            key: const Key('identity-start'),
+            onPressed: _consent && s.attemptsLeft > 0 && !_starting ? _begin : null,
+            icon: _starting ? const ButtonSpinner() : const Icon(LucideIcons.scanFace, size: 18),
+            label: const Text('Start verification'),
+          ),
+        ),
+      ],
+    );
   }
 }
 

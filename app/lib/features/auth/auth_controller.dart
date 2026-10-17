@@ -39,6 +39,7 @@ class AuthController extends ChangeNotifier {
     final token = res is Map ? res['access_token'] : null;
     if (token is! String || token.isEmpty) throw ApiException("Sign-in didn't work. Please try again.");
     await session.saveToken(token);
+    await session.clearCache(); // a new session never sees an earlier one's offline copy
 
     // The app is for customers. Merchant and admin accounts get a 403 from customer endpoints.
     try {
@@ -63,15 +64,40 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---- Forgot password (the web app's three steps; the code goes to the account's email) ----
+
+  /// Asks for a reset code. The server answers the same whether or not the email is registered.
+  Future<void> requestResetCode(String email) => api.post('/forgot-password', {'email': email.trim().toLowerCase()});
+
+  /// Checks the 6-digit code and returns the one-time reset token.
+  Future<String> verifyResetCode(String email, String code) async {
+    final res = await api.post('/api/verify-otp', {'email': email.trim().toLowerCase(), 'otp': code.trim()});
+    final token = res is Map ? res['reset_token'] : null;
+    if (token is! String || token.isEmpty) {
+      throw ApiException('That code is wrong or has expired. Request a new code and try again.');
+    }
+    return token;
+  }
+
+  Future<void> resetPassword(String resetToken, String newPassword) async {
+    await api.post('/reset-password', {'reset_token': resetToken, 'new_password': newPassword});
+    notice = 'Your password is changed. Sign in with your new password.';
+    notifyListeners();
+  }
+
   Future<void> signOut() async {
     await session.clearToken();
+    await session.clearCache();
     status = AuthStatus.signedOut;
     notifyListeners();
   }
 
-  void _expired() {
+  void _expired(String? code) {
     if (status != AuthStatus.signedIn) return;
-    notice = 'You were signed out to keep your account safe. Please sign in again.';
+    // The web app's wording (auth.ts): a suspended account is told so, not that it timed out
+    notice = code == 'account_inactive'
+        ? "Your account isn't active any more. Please contact Tabital."
+        : 'You were signed out to keep your account safe. Please sign in again.';
     status = AuthStatus.signedOut;
     notifyListeners();
   }
