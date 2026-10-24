@@ -23,12 +23,18 @@ class AccountScreen extends StatefulWidget {
 
 class _AccountScreenState extends State<AccountScreen> {
   Consents? _consents;
+  String? _status; // pending, approved, active, restricted (GET /customer/profile, U6)
   bool _savingMarketing = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadConsents());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadConsents();
+      AppScope.of(context).customer.accountStatus().then((s) {
+        if (mounted) setState(() => _status = s);
+      }, onError: (_) {});
+    });
   }
 
   Future<void> _loadConsents() async {
@@ -74,6 +80,7 @@ class _AccountScreenState extends State<AccountScreen> {
       body: ListView(
         padding: pagePadding,
         children: [
+          if (_status != null) ...[_StatusCard(_status!), const SizedBox(height: Tp.s3)],
           VCard(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Lined([
@@ -159,6 +166,48 @@ class _AccountScreenState extends State<AccountScreen> {
           const SizedBox(height: Tp.s2),
           Text(AppConfig.legalLine, key: const Key('account-legal'), textAlign: TextAlign.center, style: t.bodySmall),
           Text(AppConfig.supportEmail, textAlign: TextAlign.center, style: t.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
+/// The account's state, with what it means for the customer (U6).
+class _StatusCard extends StatelessWidget {
+  const _StatusCard(this.status);
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final (chip, text) = switch (status) {
+      'pending' => (
+        const VChip('Waiting for verification', icon: LucideIcons.clock, tone: NoteTone.warn),
+        'Add your details and documents in Verify identity. You can buy once your account is approved.',
+      ),
+      'approved' || 'active' => (const VChip('Approved', icon: LucideIcons.badgeCheck, tone: NoteTone.success), null),
+      'restricted' => (
+        const VChip('Restricted', icon: LucideIcons.circleAlert, tone: NoteTone.error),
+        'You can pay your plans, but new purchases are paused. Contact us to find out more.',
+      ),
+      _ => (VChip(status), null),
+    };
+    return VCard(
+      key: const Key('account-status'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('Your account', style: t.titleSmall)),
+              chip,
+            ],
+          ),
+          if (text != null) ...[const SizedBox(height: 6), Text(text, style: t.bodySmall)],
+          if (status == 'pending') ...[
+            const SizedBox(height: Tp.s2),
+            OutlinedButton(onPressed: () => context.go('/account/identity'), child: const Text('Verify identity')),
+          ],
         ],
       ),
     );

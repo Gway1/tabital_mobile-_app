@@ -48,10 +48,7 @@ class OfflineActionNote extends StatelessWidget {
       key: const Key('offline-action'),
       icon: LucideIcons.wifiOff,
       tone: NoteTone.warn,
-      action: OutlinedButton(
-        onPressed: () => AppScope.of(context).customer.ping(),
-        child: const Text('Check again'),
-      ),
+      action: OutlinedButton(onPressed: () => AppScope.of(context).customer.ping(), child: const Text('Check again')),
     ),
   );
 }

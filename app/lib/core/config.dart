@@ -1,10 +1,10 @@
 /// Build-time settings, passed with `--dart-define`. No secrets live in the app.
 ///
 ///   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000   (local Flask, from the emulator)
-///   flutter build apk --dart-define=API_BASE_URL=https://tabital.onrender.com
+///   flutter build apk                                              (the live API)
 abstract final class AppConfig {
-  /// The Flask API. Defaults to staging, the same as the web app's staging build.
-  static const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'https://tabital-api-staging.onrender.com');
+  /// The Flask API. Defaults to the live API (U1, 2026-10-25); override with --dart-define.
+  static const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'https://tabital-backend.onrender.com');
 
   static const supportEmail = 'info@tabitalpay.com';
   static const helpUrl = 'https://tabitalpay.com/help/';

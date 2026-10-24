@@ -7,6 +7,7 @@ import 'package:tabital_pay/app.dart';
 import 'package:tabital_pay/app_scope.dart';
 import 'package:tabital_pay/core/paystack_checkout.dart';
 import 'package:tabital_pay/features/auth/auth_controller.dart';
+import 'package:tabital_pay/features/identity/document_picker.dart';
 import 'package:tabital_pay/features/identity/identity_models.dart';
 import 'package:tabital_pay/features/identity/smile_capture.dart';
 import 'package:tabital_pay/ui/theme.dart';
@@ -45,6 +46,7 @@ Future<GoRouter> pumpApp(
   FakeCheckout? checkout,
   SelfieCamera? camera,
   SmileUploader? smile,
+  DocumentPicker? documents,
   Object? extra,
   bool signedIn = true,
 }) async {
@@ -61,6 +63,7 @@ Future<GoRouter> pumpApp(
       checkout: checkout ?? FakeCheckout(),
       camera: camera ?? FakeCamera(),
       smile: smile,
+      documents: documents,
       child: MaterialApp.router(theme: buildTheme(googleFonts: false), routerConfig: router),
     ),
   );

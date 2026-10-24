@@ -33,6 +33,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _placing = false;
   bool? _paystack;
   String? _error;
+  bool _needsVerify = false; // the refusal was because identity isn't verified yet (U6)
   late final TapGestureRecognizer _termsTap;
   late final _privacyTap = TapGestureRecognizer()
     ..onTap = () => openLink(widget.args.options.keyFacts?.privacyUrl ?? AppConfig.privacyUrl);
@@ -74,6 +75,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
     setState(() {
       _placing = true;
+      _needsVerify = false;
       _error = null;
     });
     final a = widget.args;
@@ -106,7 +108,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!mounted) return;
       final body = e.body;
       final reasons = body is Map ? ((body['reasons'] as List?) ?? const []).map((r) => r.toString()).toList() : const <String>[];
-      setState(() => _error = [e.message, ...reasons].join('\n• '));
+      setState(() => _error = [e.message, ...reasons].join('\n• ')); // the server's own words (U8)
+      // A pending account, or one not verified yet, is refused with 403 (U6). The reason has no code,
+      // so ask the server for the account's state rather than reading the sentence
+      if (e.status == 403) {
+        final customer = AppScope.of(context).customer;
+        final needs = await Future.wait([
+          customer.accountStatus().then((s) => s == 'pending', onError: (_) => false),
+          customer.identity().then((i) => !i.verified, onError: (_) => false),
+        ]);
+        if (mounted) setState(() => _needsVerify = needs.any((n) => n));
+      }
     } catch (_) {
       if (mounted) setState(() => _error = 'Failed to place the order. Please try again.');
     } finally {
@@ -194,7 +206,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                     ),
                   ),
-                  if (_error != null) ...[const SizedBox(height: 12), Notice(_error!, tone: NoticeTone.error)],
+                  if (_error != null) ...[
+                    const SizedBox(height: 12),
+                    Notice(
+                      _error!,
+                      tone: NoticeTone.error,
+                      action: _needsVerify
+                          ? FilledButton(
+                              key: const Key('checkout-verify'),
+                              onPressed: () => context.push('/account/identity'),
+                              child: const Text('Verify your identity'),
+                            )
+                          : null,
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   Text(
                     paystack ? 'Secured by Paystack. Your order goes for approval once the payment is confirmed.' : 'Online payment is off right now. Your order goes for approval, and we will contact you about the down payment.',

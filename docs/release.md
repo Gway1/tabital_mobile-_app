@@ -35,7 +35,7 @@ Release builds of the Android app are signed with Tabital's **upload key**, neve
 ## Building a release
 
 ```bash
-flutter build appbundle --release --dart-define=API_BASE_URL=https://<production API>
+flutter build appbundle --release
 ```
 
 The Play Store takes the `.aab` from `build/app/outputs/bundle/release/`. Turn on **Play App Signing** when you first upload, so Google holds the app signing key and this file is only the upload key.
@@ -45,5 +45,5 @@ The Play Store takes the `.aab` from `build/app/outputs/bundle/release/`. Turn o
 These are tracked in `docs/guide_checklist.md`:
 - the real logo and app icon (B1)
 - the Play listing and the data safety form (B3)
-- the production API URL
+- the API address: release builds default to the live API, `https://tabital-backend.onrender.com` (`lib/core/config.dart`)
 - a check that the release build has no `localhost` or `10.0.2.2` API address

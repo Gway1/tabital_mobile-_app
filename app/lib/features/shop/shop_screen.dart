@@ -37,6 +37,19 @@ class _ShopScreenState extends State<ShopScreen> {
   String? _error;
 
   IdentityStatus? _identity;
+  KycChecklist? _checklist;
+
+  String _verifyText() {
+    final c = _checklist;
+    final missing = [...?c?.detailsMissing, ...?c?.documentsToUpload];
+    if (missing.isEmpty) {
+      return c != null && c.documentsInReview.isNotEmpty
+          ? "Your documents are waiting for review. Finish the selfie check in Verify identity if you haven't yet."
+          : 'Verify your identity with your Ghana Card and a selfie before you buy. It takes about 2 minutes.';
+    }
+    return 'Still needed: ${missing.join(', ')}.';
+  }
+
   CreditSummary? _credit;
 
   @override
@@ -60,6 +73,12 @@ class _ShopScreenState extends State<ShopScreen> {
     // The banner is a hint only: the server checks identity and the limit again at checkout
     customer.identity().then((s) {
       if (mounted) setState(() => _identity = s);
+      // Not verified yet: say what's still missing, from the server's checklist (U6)
+      if (!s.verified) {
+        customer.kycDetails().then((k) {
+          if (mounted) setState(() => _checklist = k.checklist);
+        }, onError: (_) {});
+      }
     }, onError: (_) {});
     customer.credit().then((c) {
       if (mounted) setState(() => _credit = c);
@@ -175,7 +194,8 @@ class _ShopScreenState extends State<ShopScreen> {
                   const SizedBox(height: Tp.s2),
                   if (_identity != null && !_identity!.verified) ...[
                     Note(
-                      'Verify your identity with your Ghana Card and a selfie before you buy. It takes about 2 minutes.',
+                      _verifyText(),
+                      key: const Key('shop-verify'),
                       title: 'Verify your identity to shop',
                       tone: NoteTone.warn,
                       action: OutlinedButton(onPressed: () => context.push('/account/identity'), child: const Text('Verify now')),
@@ -215,9 +235,21 @@ class _ShopScreenState extends State<ShopScreen> {
                 child: ErrorPanel(message: _error!, onRetry: _reload),
               )
             else if (_products.isEmpty)
-              const SliverFillRemaining(
+              SliverFillRemaining(
                 hasScrollBody: false,
-                child: EmptyState(icon: LucideIcons.searchX, title: 'No products found', text: 'Try another category or search.'),
+                // With no search or category, an empty shop means partner shops are still being approved (U7)
+                child: _search.text.trim().isEmpty && _category.isEmpty
+                    ? const EmptyState(
+                        key: Key('shop-empty'),
+                        icon: LucideIcons.store,
+                        title: 'No products yet',
+                        text: 'Partner shops are being added. Check back soon.',
+                      )
+                    : const EmptyState(
+                        icon: LucideIcons.searchX,
+                        title: 'No products found',
+                        text: 'Try another category or search.',
+                      ),
               )
             else ...[
               SliverPadding(

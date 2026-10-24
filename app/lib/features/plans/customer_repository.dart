@@ -111,11 +111,13 @@ class CustomerRepository {
   Future<void> _saveCache({required List<Map<String, dynamic>> plans, Map<String, dynamic>? stats}) async {
     try {
       final old = stats == null ? await _readCache() : null;
-      await api.session.writeCache(jsonEncode({
-        'saved_at': DateTime.now().toUtc().toIso8601String(),
-        'stats': stats ?? old?.stats ?? const {},
-        'plans': plans,
-      }));
+      await api.session.writeCache(
+        jsonEncode({
+          'saved_at': DateTime.now().toUtc().toIso8601String(),
+          'stats': stats ?? old?.stats ?? const {},
+          'plans': plans,
+        }),
+      );
     } catch (_) {
       // A cache that can't be written only means no offline copy
     }
@@ -292,6 +294,38 @@ class CustomerRepository {
 
   Future<void> identitySubmitted(int checkId, String jobId) =>
       api.post('/customer/identity/$checkId/submitted', {'job_id': jobId});
+
+  // ---- Verification details and documents (U4/U5, 2026-10-25) ----
+
+  Future<KycState> kycDetails() async {
+    final res = await api.get('/customer/kyc/details');
+    if (res is! Map) throw ApiException("Couldn't load your verification details.", status: 200);
+    return KycState.fromJson(res.cast<String, dynamic>());
+  }
+
+  /// Saves only the fields given (partial saves are fine). Errors are `{error, field}`.
+  Future<KycState> saveKycDetails(Map<String, Object?> fields) async {
+    final res = await api.put('/customer/kyc/details', fields);
+    if (res is! Map) throw ApiException("Couldn't save your details.", status: 200);
+    changed();
+    return KycState.fromJson(res.cast<String, dynamic>());
+  }
+
+  /// Uploads one document (`front_image`, `back_image`, `salary_certificate` or
+  /// `bank_statement`). Returns the server's message; reload the checklist after.
+  Future<String> uploadDocument(String field, PickedDocument file) async {
+    final res = await api.upload('/customer/documents/upload', {field: (file.name, file.bytes)});
+    changed();
+    final message = res is Map ? res['message'] : null;
+    return message is String && message.isNotEmpty ? message : 'Uploaded. The team will review it.';
+  }
+
+  /// The account status (`pending`, `approved`, `active`, `restricted`) from `GET /customer/profile`.
+  Future<String?> accountStatus() async {
+    final res = await api.get('/customer/profile');
+    final status = res is Map ? res['status'] : null;
+    return status is String && status.isNotEmpty ? status : null;
+  }
 
   // ---- Report a problem (disputes) ----
 

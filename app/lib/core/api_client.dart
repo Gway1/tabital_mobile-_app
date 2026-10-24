@@ -52,23 +52,37 @@ class ApiClient {
   Future<dynamic> patch(String path, [Object? body]) => _send('PATCH', path, body: body);
   Future<dynamic> delete(String path) => _send('DELETE', path);
 
+  /// Uploads files as `multipart/form-data` (`{form field: (file name, bytes)}`), e.g. KYC
+  /// documents. Same headers, offline signal and errors as every other call.
+  Future<dynamic> upload(String path, Map<String, (String, List<int>)> files, {Duration? timeout}) async {
+    final req = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
+    for (final MapEntry(key: field, value: (name, bytes)) in files.entries) {
+      req.files.add(http.MultipartFile.fromBytes(field, bytes, filename: name));
+    }
+    return _dispatch(req, timeout: timeout ?? const Duration(seconds: 120));
+  }
+
   Future<dynamic> _send(String method, String path, {Map<String, String>? query, Object? body}) async {
     final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
     final req = http.Request(method, uri);
+    if (body != null) {
+      req.headers['Content-Type'] = 'application/json';
+      req.body = jsonEncode(body);
+    }
+    return _dispatch(req);
+  }
+
+  Future<dynamic> _dispatch(http.BaseRequest req, {Duration? timeout}) async {
     req.headers['Accept'] = 'application/json';
     final token = session.token;
     if (token != null) req.headers['Authorization'] = 'Bearer $token';
     req.headers['X-Device-Id'] = await session.deviceId();
     final flags = deviceFlags;
     if (flags != null && flags.isNotEmpty) req.headers['X-Device-Flags'] = flags;
-    if (body != null) {
-      req.headers['Content-Type'] = 'application/json';
-      req.body = jsonEncode(body);
-    }
 
     http.Response res;
     try {
-      res = await http.Response.fromStream(await _http.send(req).timeout(timeout));
+      res = await http.Response.fromStream(await _http.send(req).timeout(timeout ?? this.timeout));
     } on TimeoutException {
       online.value = false;
       throw ApiException('The connection timed out. Check your data or Wi-Fi and try again.');

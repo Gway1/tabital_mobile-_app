@@ -48,7 +48,7 @@ void main() {
     return (f, router);
   }
 
-  final agreeBox = find.descendant(of: find.byKey(const Key('su-agree')), matching: find.byType(Checkbox));
+  final agreeBox = find.byKey(const Key('su-agree')); // the box itself: the row's text holds the Terms and Privacy links
 
   Future<void> type(WidgetTester tester, String key, String text) async {
     final field = find.byKey(Key('su-$key'));
@@ -71,20 +71,6 @@ void main() {
     await pickDate(tester, 'dob', '01/15/1990');
     await type(tester, 'business_email', 'ama@example.com');
     await type(tester, 'phone', '0241234567');
-    await type(tester, 'national_id', 'GHA-123456789-0');
-    await type(tester, 'city', 'Accra');
-    await type(tester, 'address', 'House 5, Oxford Street, Osu');
-    await type(tester, 'monthly_salary', '5000');
-    await pickDate(tester, 'employment_start_date', '03/01/2023');
-    await tester.ensureVisible(find.byKey(const Key('su-salary_paid_to_bank')));
-    await tester.tap(find.byKey(const Key('su-salary_paid_to_bank')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Yes').last);
-    await tester.pumpAndSettle();
-    await type(tester, 'momo_number', '0551234567');
-    await type(tester, 'ref_name', 'Kofi Mensah');
-    await type(tester, 'ref_phone', '0201234567');
-    await type(tester, 'ref_relationship', 'Brother');
     await type(tester, 'password', 'a-long-test-pass');
     await type(tester, 'confirm', 'a-long-test-pass');
     await tester.ensureVisible(find.byKey(const Key('su-agree')));
@@ -98,21 +84,21 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('creates a customer account with the web fields, then goes to sign in', (tester) async {
+  testWidgets('short sign-up (U2): sends only the web fields, then goes to sign in', (tester) async {
     final (f, router) = await open(tester);
+    expect(find.byKey(const Key('su-next')), findsOneWidget); // says what comes at verification
+    for (final gone in ['national_id', 'city', 'address', 'monthly_salary', 'momo_number', 'ref_name']) {
+      expect(find.byKey(Key('su-$gone')), findsNothing, reason: gone);
+    }
     await fillAll(tester);
     await submit(tester);
 
     final body = lastBody(f, '/register');
+    expect(body.keys.toSet(), {'full_name', 'business_email', 'phone', 'dob', 'agree', 'marketing_consent', 'password', 'role'});
     expect(body['role'], 'customer');
     expect(body['dob'], '1990-01-15');
-    expect(body['employment_start_date'], '2023-03-01');
-    expect(body['monthly_salary'], '5000');
-    expect(body['salary_paid_to_bank'], true);
-    expect(body['national_id'], 'GHA-123456789-0');
     expect(body['agree'], true);
     expect(body['marketing_consent'], false);
-    expect(body.containsKey('confirm'), isFalse);
     expect(router.state.matchedLocation, '/sign-in');
     expect(find.textContaining('Your account is ready'), findsOneWidget);
   });

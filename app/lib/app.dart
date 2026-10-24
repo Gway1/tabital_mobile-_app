@@ -17,7 +17,9 @@ import 'features/auth/sign_up_screen.dart';
 import 'features/auth/welcome_screen.dart';
 import 'features/defer/defer_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/identity/documents_screen.dart';
 import 'features/identity/identity_screen.dart';
+import 'features/identity/kyc_details_screen.dart';
 import 'features/identity/smile_capture.dart';
 import 'features/pay/pay_screen.dart';
 import 'features/pay/payment_result_screen.dart';
@@ -102,7 +104,15 @@ GoRouter buildRouter(AuthController auth) {
                 builder: (_, _) => const AccountScreen(),
                 routes: [
                   GoRoute(path: 'orders', builder: (_, _) => const OrdersScreen()),
-                  GoRoute(path: 'identity', builder: (_, _) => const IdentityScreen()),
+                  GoRoute(
+                    path: 'identity',
+                    builder: (_, _) => const IdentityScreen(),
+                    routes: [
+                      // Verification details and documents (U4/U5)
+                      GoRoute(path: 'details', builder: (_, _) => const KycDetailsScreen()),
+                      GoRoute(path: 'documents', builder: (_, _) => const DocumentsScreen()),
+                    ],
+                  ),
                   GoRoute(path: 'limit', builder: (_, _) => const LimitScreen()),
                   GoRoute(path: 'cards', builder: (_, _) => const CardsScreen()),
                 ],

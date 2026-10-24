@@ -6,6 +6,23 @@ Severity: **Blocker** (must not ship / breaks a money rule) · **High** (fix bef
 
 ---
 
+## Backend sync: 2026-10-25 (by the mobile app session)
+
+Brought the app in line with the web app and API per `docs/backend_sync_2026-10-25.md`. Not a reviewer round: the next round should check it.
+
+- **U1** The default API is the live one, `https://tabital-backend.onrender.com` (`lib/core/config.dart`, README, `docs/release.md`).
+- **U2** Sign up is the web's short form; the request sends only the short fields. `lib/core/validators.dart` holds the shared field checks.
+- **U3** The selfie check (Start) stays off until the server's checklist no longer lists the Ghana Card number.
+- **U4** New Your details screen (`kyc_details_screen.dart`): partial saves, `{error, field}` on the field, Ghana Card normalised to `GHA-XXXXXXXXX-X`.
+- **U5** New Documents screen (`documents_screen.dart`, `document_picker.dart`): states from the server, upload only where `can_upload`, file type and 5 MB checked first. New packages `image_picker` and `file_picker` (user approved). `ApiClient.upload` sends multipart.
+- **U6** A refused checkout (403) shows the API's words and a Verify identity button; the Shop banner lists what's still needed; the Account page shows the account status from `GET /customer/profile`.
+- **U7** A product that's not available shows that, not an error page; an empty shop says partner shops are being added.
+- **U8** Checked: sign-in and the new screens show the server's message.
+- **Tests:** `test/kyc_sync_test.dart` (15 new) and `test/sign_up_test.dart` (updated). `flutter analyze`: no issues. `flutter test`: 137 passed.
+- **Not verified:** the device camera and file pickers on a real phone, uploads to the real API, and Smile ID end to end.
+
+---
+
 ## Round 1: 2026-10-04
 
 **Scope:** everything in `app/lib/` (41 files) and `app/test/` (12 files), Android manifest, Gradle and `MainActivity.kt`, `docs/*.md`, `design/prototype.html`. Compared with `tabital/` (branch `remediation`, HEAD `b256288`) and `tabital_front/` (branch `remediation`, HEAD `2585922`) and CLAUDE.md.

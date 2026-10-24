@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app_scope.dart';
+import '../../core/api_client.dart';
 import '../../core/format.dart';
 import '../../ui/tokens.dart';
 import '../../ui/vault.dart';
@@ -83,6 +84,18 @@ class _ProductScreenState extends State<ProductScreen> {
         return Scaffold(
           appBar: AppBar(title: Text(p?.name ?? 'Product', overflow: TextOverflow.ellipsis)),
           body: switch (snap.connectionState) {
+            // A product that's gone, or from a shop not approved yet, is "not available" (400/404, U7)
+            ConnectionState.done
+                when snap.hasError &&
+                    snap.error is ApiException &&
+                    const [400, 404].contains((snap.error as ApiException).status) =>
+              EmptyState(
+                key: const Key('product-unavailable'),
+                icon: LucideIcons.packageX,
+                title: "This product isn't available",
+                text: (snap.error as ApiException).message,
+                action: OutlinedButton(onPressed: () => context.go('/shop'), child: const Text('Back to the shop')),
+              ),
             ConnectionState.done when snap.hasError => ErrorPanel(
               message: errorText(snap.error, "Couldn't load this product."),
               onRetry: () => setState(() {

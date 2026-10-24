@@ -186,7 +186,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         const SizedBox(height: 14),
         // The deferment rules the server enforces too (§4): only the next payment, still upcoming,
         // with no late fee, never Payment 1, and not while the plan is paused
-        if (!offline && next != null && next.status == 'pending' && next.number != 1 && next.lateFee == 0 && _dispute == null) ...[
+        if (!offline &&
+            next != null &&
+            next.status == 'pending' &&
+            next.number != 1 &&
+            next.lateFee == 0 &&
+            _dispute == null) ...[
           OutlinedButton.icon(
             key: const Key('plan-defer'),
             onPressed: () => context.push('/plans/${p.id}/defer?payment=${next.id}'),

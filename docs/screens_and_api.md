@@ -1,10 +1,10 @@
 # Screens and the API they use
 
-The mobile app uses the same Flask API as the web app (`Kobydon/tabital`, branch `remediation`). The table below lists what each screen calls. Every money amount comes from these responses.
+The mobile app uses the same Flask API as the web app (`Kobydon/tabital`, branch `remediation`). Release builds call the live API, `https://tabital-backend.onrender.com` (`lib/core/config.dart`); `--dart-define=API_BASE_URL=...` points a build elsewhere. The table below lists what each screen calls. Every money amount comes from these responses.
 
 | Screen | Endpoints |
 |---|---|
-| Sign up | `POST /register` |
+| Sign up | `POST /register` with only `{full_name, business_email, phone, dob, agree, marketing_consent, password, role}` (short form, 2026-10-25). Everything else is added in Verify identity |
 | Sign in | `POST /login`, `POST /login/2fa`; forgot password: `POST /forgot-password`, `POST /api/verify-otp`, `POST /reset-password` |
 | Home | `GET /customer/upcoming-payments`, `GET /customer/credit`, `GET /customer/instalments`, `GET /customer/notifications/unread-count` |
 | Shop list | `GET /customer/products`, `GET /customer/products/categories` |
@@ -16,13 +16,16 @@ The mobile app uses the same Flask API as the web app (`Kobydon/tabital`, branch
 | Defer | `GET/POST /customer/plans/<id>/deferment` |
 | Saved cards and autopay | `GET /customer/payment-methods`, `PUT /customer/payment-methods/<id>` with `{autopay_enabled}` (the API has no PATCH), `DELETE /customer/payment-methods/<id>` |
 | Account | `GET /account/consents` (the Terms version the customer accepted), `PUT /account/consents` with `{marketing_consent}` |
-| Verify identity | `GET /customer/identity`, `POST /customer/identity/start`, `POST /customer/identity/<check_id>/submitted` |
+| Verify identity | `GET /customer/identity`, `POST /customer/identity/start`, `POST /customer/identity/<check_id>/submitted`. The selfie check stays off until the Ghana Card number is saved (`details_missing`) |
+| Verification checklist | `GET /customer/kyc/details` → `checklist` (`details_missing`, `documents`, `documents_to_upload`, `documents_in_review`, `complete`): shown on Verify identity, and as "Still needed" in the Shop banner |
+| Your details | `GET /customer/kyc/details`, `PUT /customer/kyc/details` with only the fields filled in (partial saves); `{error, field}` shows on that field |
+| Documents | `POST /customer/documents/upload`, multipart, one document per request (`front_image`, `back_image`, `salary_certificate`, `bank_statement`); upload offered only where `can_upload`. JPG, PNG, WEBP or PDF up to 5 MB, checked in the app first |
 | Credit limit | `GET /customer/credit`, `GET /customer/underwriting` |
 | Orders | `GET /customer/orders`, `POST /customer/orders/<id>/pay` |
 | Report a problem (disputes) | `GET /customer/disputes` (also how the app knows a plan is paused), `POST /customer/disputes` with `{plan_id, reason, description}` |
 | Notifications and the bell | `GET /notifications?page&limit`, `PUT /notifications/<id>/read`, `POST /notifications/mark-all-read`, `GET /notifications/unread-count`: the real inbox the reminders write to, as the web app uses. Not the `/customer/notifications*` stubs (backend item 14) |
 | Support | `/customer/support/ticket(s)` |
-| Account | `PUT /customer/password`, `GET /customer/kyc/status` |
+| Account | `PUT /customer/password`, `GET /customer/kyc/status`, `GET /customer/profile` → `status` for the account status card (pending, approved, active, restricted) |
 
 ## What the backend still needs for the mobile app
 
@@ -56,13 +59,17 @@ These are small backend changes. They'll be done in the main project when the ap
 | Shop, product, checkout | `/shop`, `/shop/product/:id`, `.../checkout` | Plans priced by `POST /customer/plan-options` (by product id, not a client price). Checkout sends only the choice and `accept_terms` |
 | My orders | `/account/orders` | Pays an unpaid down payment again (`POST /customer/orders/<id>/pay`) |
 | Verify identity | `/account/identity` | Smile ID camera in a web view, upload straight to Smile ID, then `.../submitted`, then polls every 10 s |
-| Sign up | `/sign-up` | The web form's fields and checks; the server's `field` error shows on that field |
+| Sign up | `/sign-up` | The web's short form (name, date of birth, email, phone, password, agree, offers); the server's `field` error shows on that field |
+| Your details | `/account/identity/details` | Ghana Card, where you live, work and income, a person we can contact; saves as you go |
+| Documents | `/account/identity/documents` | Each document's state from the server; take a photo, choose a photo or choose a PDF |
 
 Added 2026-10-06 (Batch C): Cards and autopay (`/account/cards`, also listed under "Pay with"), the Account page's Help, legal line, accepted Terms version and offers-and-news switch.
 
 Added 2026-10-06 (Batch B): Report a problem (`/plans/:id/report`), Forgot password (`/forgot-password`), Notifications (`/notifications`) and the bell's unread dot on Home.
 
 **Not in the app yet** (the web app has them): "I've paid" claims by bank transfer, profile editing, support tickets, receipts, pay links / QR from a merchant (also the only way to get in-store pickup with no delivery fee), employment verification details.
+
+Added 2026-10-25 (backend sync U1–U9, `docs/backend_sync_2026-10-25.md`): live API address; short sign-up; Your details; Documents; the checklist on Verify identity and in the Shop banner; the selfie check waits for the Ghana Card number; a refused checkout offers Verify identity; the account status card; "not available" products and the empty shop. All done.
 
 ## Backend changes from the data architecture remediation
 

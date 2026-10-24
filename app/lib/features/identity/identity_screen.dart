@@ -12,12 +12,15 @@ import '../../ui/tokens.dart';
 import '../../ui/vault.dart';
 import '../../ui/widgets.dart';
 import 'identity_models.dart';
+import 'kyc_widgets.dart';
 import 'smile_capture.dart';
 
 enum _Step { loading, intro, uploading, waiting, done, error }
 
-/// S13: Ghana Card + selfie with liveness, checked by Smile ID (§9A). The images go from the
-/// phone straight to Smile ID with a short-lived token from the API; Tabital never stores them.
+/// S13: Verify identity. What's still needed (the server's checklist: Your details, Documents), then
+/// the Ghana Card + selfie with liveness, checked by Smile ID (§9A). The selfie check needs the Ghana
+/// Card number saved first (U3, 2026-10-25). The images go from the phone straight to Smile ID with a
+/// short-lived token from the API; Tabital never stores them.
 class IdentityScreen extends StatefulWidget {
   const IdentityScreen({super.key, this.pollEvery = const Duration(seconds: 10)});
   final Duration pollEvery;
@@ -29,6 +32,7 @@ class IdentityScreen extends StatefulWidget {
 class _IdentityScreenState extends State<IdentityScreen> {
   _Step _step = _Step.loading;
   IdentityStatus? _status;
+  KycChecklist? _checklist; // null if it couldn't be loaded; the server still checks at start
   bool _consent = false;
   bool _starting = false;
   String? _error;
@@ -48,7 +52,23 @@ class _IdentityScreenState extends State<IdentityScreen> {
     super.dispose();
   }
 
+  Future<void> _loadChecklist() async {
+    try {
+      final k = await AppScope.of(context).customer.kycDetails();
+      if (mounted) setState(() => _checklist = k.checklist);
+    } catch (_) {
+      // The selfie step still works; the server refuses it with its own message if details are missing
+    }
+  }
+
+  Future<void> _open(String path) async {
+    await context.push(path);
+    if (mounted) await _loadChecklist();
+  }
+
   Future<void> _load() async {
+    await _loadChecklist();
+    if (!mounted) return;
     try {
       final s = await AppScope.of(context).customer.identity();
       if (!mounted) return;
@@ -71,7 +91,7 @@ class _IdentityScreenState extends State<IdentityScreen> {
   }
 
   Future<void> _begin() async {
-    if (!_consent || _starting) return;
+    if (!_consent || _starting || (_checklist?.needsGhanaCard ?? false)) return;
     final scope = AppScope.of(context);
     setState(() {
       _starting = true;
@@ -175,13 +195,22 @@ class _IdentityScreenState extends State<IdentityScreen> {
     }
 
     final s = _status!;
+    final checklist = _checklist;
+    final needsCard = checklist?.needsGhanaCard ?? false;
+    final card = checklist == null
+        ? null
+        : KycChecklistCard(
+            checklist: checklist,
+            onDetails: () => _open('/account/identity/details'),
+            onDocuments: () => _open('/account/identity/documents'),
+          );
     if (!s.configured) {
       return ListView(
         padding: pagePadding,
-        children: const [
-          Notice(
-            "Selfie verification isn't switched on yet. Upload your Ghana Card under Documents on tabitalpay.com "
-            'and our team will review it.',
+        children: [
+          if (card != null) ...[const SectionTitle("What's still needed"), card, const SizedBox(height: Tp.s3)],
+          const Notice(
+            "Selfie verification isn't switched on yet. Add your details and documents above and our team will review them.",
             tone: NoticeTone.info,
           ),
         ],
@@ -200,6 +229,20 @@ class _IdentityScreenState extends State<IdentityScreen> {
               ] else if (s.checkStatus == 'error') ...[
                 const Notice("The last check didn't finish. Please try again.", tone: NoticeTone.warn),
                 const SizedBox(height: Tp.s3),
+              ],
+              if (card != null) ...[const SectionTitle("What's still needed"), card, const SizedBox(height: Tp.s2)],
+              if (needsCard) ...[
+                const SizedBox(height: Tp.s2),
+                Note(
+                  'Add your Ghana Card number in Your details first. The selfie check compares you with your card.',
+                  key: const Key('identity-needs-card'),
+                  icon: LucideIcons.idCard,
+                  tone: NoteTone.warn,
+                  action: OutlinedButton(
+                    onPressed: () => _open('/account/identity/details'),
+                    child: const Text('Add your details'),
+                  ),
+                ),
               ],
               const SizedBox(height: Tp.s4),
               const Center(child: BigIcon(LucideIcons.scanFace)),
@@ -252,14 +295,14 @@ class _IdentityScreenState extends State<IdentityScreen> {
                 style: t.bodySmall,
               ),
               const SizedBox(height: 6),
-              Text('Details wrong? Update them in your profile on tabitalpay.com first.', style: t.bodySmall),
+              Text('Details wrong? Correct them in Your details first.', style: t.bodySmall),
             ],
           ),
         ),
         PayBar(
           button: FilledButton.icon(
             key: const Key('identity-start'),
-            onPressed: _consent && s.attemptsLeft > 0 && !_starting ? _begin : null,
+            onPressed: _consent && s.attemptsLeft > 0 && !_starting && !needsCard ? _begin : null,
             icon: _starting ? const ButtonSpinner() : const Icon(LucideIcons.scanFace, size: 18),
             label: const Text('Start verification'),
           ),

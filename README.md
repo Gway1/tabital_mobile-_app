@@ -51,10 +51,10 @@ Your user PATH, `JAVA_HOME` and `ANDROID_HOME` point at them. The emulator is `t
 cd app
 flutter test
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000
-flutter build apk --dart-define=API_BASE_URL=https://tabital.onrender.com
+flutter build apk --release
 ```
 
-The `flutter run` line uses a local Flask server, reached from the emulator. The API defaults to staging (`https://tabital-api-staging.onrender.com`). Plain HTTP is allowed only in debug builds, and only to `10.0.2.2` and `localhost`.
+The `flutter run` line uses a local Flask server, reached from the emulator. The API defaults to the live API (`https://tabital-backend.onrender.com`); `--dart-define=API_BASE_URL=...` points a build somewhere else. Plain HTTP is allowed only in debug builds, and only to `10.0.2.2`, `localhost` and the laptop's Wi-Fi address used for phone testing (`android/app/src/debug/res/xml/network_security_config.xml`).
 
 ## Rules carried over from the web app
 

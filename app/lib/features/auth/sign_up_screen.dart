@@ -8,31 +8,16 @@ import '../../core/api_client.dart';
 import '../../core/config.dart';
 import '../../core/format.dart';
 import '../../core/links.dart';
+import '../../core/validators.dart';
 import '../../ui/tokens.dart';
+import '../../ui/vault.dart';
 import '../../ui/widgets.dart';
 
-/// Ghana mobile numbers, the same check as the web sign-up.
-final _ghanaMobile = RegExp(r'^(054|055|059|020|024|025|026|027|050|053|057|056)[0-9]{7}$');
+export '../../core/validators.dart' show phoneError, passwordError;
 
-String? phoneError(String? v, {bool required = true}) {
-  final s = (v ?? '').trim().replaceAll(' ', '');
-  if (s.isEmpty) return required ? 'Mobile number is required' : null;
-  if (!_ghanaMobile.hasMatch(s) || RegExp(r'^(\d)\1{9}$').hasMatch(s)) {
-    return 'Please enter a valid Ghana mobile number (e.g., 024XXXXXXX)';
-  }
-  return null;
-}
-
-String? passwordError(String? v) {
-  final s = v ?? '';
-  if (s.isEmpty) return 'Password is required';
-  if (s.length < 10) return 'Password must be at least 10 characters';
-  if (s.length > 128) return 'Password is too long (maximum 128 characters)';
-  return null;
-}
-
-/// S2: create a customer account. The same fields as the web sign-up; the server checks them
-/// all again, and Tabital verifies salary and employment before giving a limit.
+/// S2: create a customer account. The short web sign-up (U2, 2026-10-25): name, date of birth,
+/// email, phone and password. Address, work and income, the Ghana Card, MoMo and a reference are
+/// given later, in Verify identity (`/account/identity`).
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key, this.today});
   final DateTime? today;
@@ -44,29 +29,9 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   final _form = GlobalKey<FormState>();
   final _c = {
-    for (final k in const [
-      'full_name',
-      'business_email',
-      'phone',
-      'national_id',
-      'city',
-      'gps',
-      'address',
-      'designation',
-      'company',
-      'monthly_salary',
-      'momo_number',
-      'ref_name',
-      'ref_phone',
-      'ref_relationship',
-      'password',
-      'confirm',
-    ])
-      k: TextEditingController(),
+    for (final k in const ['full_name', 'business_email', 'phone', 'password', 'confirm']) k: TextEditingController(),
   };
   DateTime? _dob;
-  DateTime? _employedSince;
-  bool? _salaryToBank;
   bool _agree = false;
   bool _marketing = false;
   bool _hide = true;
@@ -99,7 +64,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _error = null;
     });
     final valid = _form.currentState?.validate() ?? false;
-    if (!valid || _dob == null || _employedSince == null || _salaryToBank == null) {
+    if (!valid || _dob == null) {
       setState(() => _error = 'Please check the highlighted fields.');
       return;
     }
@@ -110,24 +75,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _busy = true);
     final phone = _v('phone').replaceAll(' ', '');
     try {
+      // Only these: everything else is given at verification (U2)
       await AppScope.of(context).auth.register({
         'full_name': _v('full_name'),
         'business_email': _v('business_email'),
         'phone': phone,
         'dob': apiDate(_dob!),
-        'national_id': _v('national_id').toUpperCase(),
-        'city': _v('city'),
-        'gps': _v('gps'),
-        'address': _v('address'),
-        'designation': _v('designation'),
-        'company': _v('company'),
-        'monthly_salary': _v('monthly_salary').replaceAll(',', ''),
-        'employment_start_date': apiDate(_employedSince!),
-        'salary_paid_to_bank': _salaryToBank,
-        'momo_number': _v('momo_number').replaceAll(' ', ''),
-        'ref_name': _v('ref_name'),
-        'ref_phone': _v('ref_phone').replaceAll(' ', ''),
-        'ref_relationship': _v('ref_relationship'),
         'agree': true,
         'marketing_consent': _marketing,
         'password': _c['password']!.text,
@@ -138,9 +91,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
       final field = e.body is Map ? (e.body as Map)['field'] : null;
       setState(() {
-        if (field is String && _c.containsKey(field)) _serverErrors[field] = e.message;
-        if (field == 'employment_start_date') _serverErrors['employment_start_date'] = e.message;
-        _error = e.message;
+        if (field is String && (_c.containsKey(field) || field == 'dob')) _serverErrors[field] = e.message;
+        _error = e.message; // the server's own reason (U8)
       });
       _form.currentState?.validate();
     } finally {
@@ -148,33 +100,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  Future<void> _pickDate({
-    required DateTime? current,
-    required DateTime first,
-    required DateTime last,
-    required ValueChanged<DateTime> onPick,
-    required String help,
-  }) async {
+  Future<void> _pickDob(DateTime adult) async {
     final d = await showDatePicker(
       context: context,
-      initialDate: current ?? last,
-      firstDate: first,
-      lastDate: last,
-      helpText: help,
+      initialDate: _dob ?? adult,
+      firstDate: DateTime(1920),
+      lastDate: adult,
+      helpText: 'Date of birth',
       initialEntryMode: DatePickerEntryMode.input,
     );
-    if (d != null) setState(() => onPick(d));
+    if (d != null) {
+      setState(() {
+        _dob = d;
+        _serverErrors.remove('dob');
+      });
+    }
   }
 
   Widget _field(
     String key,
     String label, {
     String? hint,
-    bool required = true,
     TextInputType? keyboard,
     List<String>? autofill,
     String? Function(String?)? check,
-    int lines = 1,
     bool obscure = false,
     Widget? suffix,
   }) {
@@ -186,70 +135,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
         keyboardType: keyboard,
         autofillHints: autofill,
         obscureText: obscure,
-        minLines: lines,
-        maxLines: obscure ? 1 : lines,
-        textInputAction: lines > 1 ? TextInputAction.newline : TextInputAction.next,
+        textInputAction: TextInputAction.next,
         onChanged: (_) {
           if (_serverErrors.remove(key) != null) setState(() {});
         },
-        decoration: InputDecoration(
-          labelText: required ? '$label *' : label,
-          helperText: hint,
-          helperMaxLines: 2,
-          suffixIcon: suffix,
-        ),
+        decoration: InputDecoration(labelText: '$label *', helperText: hint, helperMaxLines: 2, suffixIcon: suffix),
         validator: (v) {
           if (_serverErrors[key] != null) return _serverErrors[key];
-          if (required && (v ?? '').trim().isEmpty) return 'Enter your ${label.toLowerCase()}';
+          if ((v ?? '').trim().isEmpty) return 'Enter your ${label.toLowerCase()}';
           return check?.call(v);
         },
       ),
     );
   }
 
-  Widget _dateField(String key, String label, DateTime? value, VoidCallback onTap, {String? hint}) {
-    final error = _serverErrors[key] ?? (_error != null && value == null ? 'Choose a date' : null);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Tp.s3),
-      child: InkWell(
-        key: Key('su-$key'),
-        onTap: onTap,
-        child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: '$label *',
-            helperText: hint,
-            errorText: error,
-            suffixIcon: const Icon(LucideIcons.calendar),
-          ),
-          child: Text(value == null ? 'Choose a date' : formatDate(value)),
-        ),
-      ),
-    );
-  }
-
-  Widget _section(IconData icon, String title, [String? lead]) {
-    final t = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(top: Tp.s4, bottom: Tp.s3),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: Tp.navy2),
-              const SizedBox(width: Tp.s2),
-              Expanded(child: Text(title, style: t.titleMedium)),
-            ],
-          ),
-          if (lead != null) ...[const SizedBox(height: Tp.s1), Text(lead, style: t.bodySmall)],
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
     final adult = DateTime(_today.year - 18, _today.month, _today.day);
+    final dobError = _serverErrors['dob'] ?? (_error != null && _dob == null ? 'Choose a date' : null);
     return Scaffold(
       appBar: AppBar(title: const Text('Create your account')),
       body: SafeArea(
@@ -259,24 +163,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
             padding: const EdgeInsets.all(Tp.s4),
             children: [
               const Text('Fields marked * are required.'),
-              _section(LucideIcons.user, 'About you'),
+              const SizedBox(height: Tp.s4),
               _field('full_name', 'Full name', hint: 'As it appears on your Ghana Card', autofill: const [AutofillHints.name]),
-              _dateField(
-                'dob',
-                'Date of birth',
-                _dob,
-                hint: 'You must be 18 or older',
-                () =>
-                    _pickDate(current: _dob, first: DateTime(1920), last: adult, onPick: (d) => _dob = d, help: 'Date of birth'),
+              Padding(
+                padding: const EdgeInsets.only(bottom: Tp.s3),
+                child: InkWell(
+                  key: const Key('su-dob'),
+                  onTap: () => _pickDob(adult),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Date of birth *',
+                      helperText: 'You must be 18 or older',
+                      errorText: dobError,
+                      suffixIcon: const Icon(LucideIcons.calendar),
+                    ),
+                    child: Text(_dob == null ? 'Choose a date' : formatDate(_dob)),
+                  ),
+                ),
               ),
               _field(
                 'business_email',
                 'Email',
                 keyboard: TextInputType.emailAddress,
                 autofill: const [AutofillHints.email],
-                check: (v) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch((v ?? '').trim())
-                    ? null
-                    : 'Please enter a valid email address',
+                check: emailError,
               ),
               _field(
                 'phone',
@@ -286,85 +196,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 autofill: const [AutofillHints.telephoneNumber],
                 check: phoneError,
               ),
-              _field(
-                'national_id',
-                'Ghana Card number',
-                hint: 'e.g. GHA-123456789-0. We verify it with a selfie later.',
-                // The server's rule: GHA, 9 digits, 1 digit, with any spaces or dashes
-                check: (v) => RegExp(r'^GHA\d{10}$').hasMatch((v ?? '').toUpperCase().replaceAll(RegExp(r'[^0-9A-Z]'), ''))
-                    ? null
-                    : 'Enter the Ghana Card number as GHA-XXXXXXXXX-X',
-              ),
-              _section(LucideIcons.mapPin, 'Where you live'),
-              _field('city', 'City or town', autofill: const [AutofillHints.addressCity]),
-              _field('gps', 'Ghana Post GPS address', hint: 'e.g. GA-123-4567', required: false),
-              _field(
-                'address',
-                'Home address',
-                hint: 'House number, street and a landmark',
-                lines: 2,
-                autofill: const [AutofillHints.fullStreetAddress],
-              ),
-              _section(
-                LucideIcons.briefcase,
-                'Work and income',
-                'We use this to set your spending limit, and we check it against your salary details before you buy.',
-              ),
-              _field('designation', 'Job title', required: false, autofill: const [AutofillHints.jobTitle]),
-              _field('company', 'Employer', required: false, autofill: const [AutofillHints.organizationName]),
-              _field(
-                'monthly_salary',
-                'Monthly salary (GHS)',
-                hint: 'Your take-home pay each month',
-                keyboard: const TextInputType.numberWithOptions(decimal: true),
-                check: (v) {
-                  final p = parseAmountInput(v ?? '');
-                  return p == null || p <= 0 ? 'Enter your monthly salary, e.g. 5000' : null;
-                },
-              ),
-              _dateField(
-                'employment_start_date',
-                'Started with this employer',
-                _employedSince,
-                () => _pickDate(
-                  current: _employedSince,
-                  first: DateTime(1960),
-                  last: _today,
-                  onPick: (d) => _employedSince = d,
-                  help: 'Start date',
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: Tp.s3),
-                child: DropdownButtonFormField<bool>(
-                  key: const Key('su-salary_paid_to_bank'),
-                  initialValue: _salaryToBank,
-                  decoration: const InputDecoration(labelText: 'Is your salary paid into a bank account? *'),
-                  items: const [
-                    DropdownMenuItem(value: true, child: Text('Yes')),
-                    DropdownMenuItem(value: false, child: Text('No')),
-                  ],
-                  onChanged: (v) => setState(() => _salaryToBank = v),
-                  validator: (v) => v == null ? 'Choose Yes or No' : null,
-                ),
-              ),
-              _field(
-                'momo_number',
-                'Mobile Money number',
-                hint: 'The MoMo number in your name',
-                keyboard: TextInputType.phone,
-                check: phoneError,
-              ),
-              _section(
-                LucideIcons.users,
-                'A person we can contact',
-                "Someone who knows you, such as a relative or colleague. Let them know you've named them. We'll only contact "
-                    "them if we can't reach you or to confirm who you are. We'll never tell them what you owe.",
-              ),
-              _field('ref_name', 'Their full name'),
-              _field('ref_phone', 'Their phone number', keyboard: TextInputType.phone, check: phoneError),
-              _field('ref_relationship', 'How you know them', hint: 'e.g. brother, colleague, friend'),
-              _section(LucideIcons.lock, 'Your password'),
               _field(
                 'password',
                 'Password',
@@ -384,31 +215,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 obscure: _hide,
                 check: (v) => v == _c['password']!.text ? null : "The passwords don't match",
               ),
-              CheckboxListTile(
-                key: const Key('su-agree'),
+              CheckRow(
+                boxKey: const Key('su-agree'),
                 value: _agree,
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                onChanged: (v) => setState(() => _agree = v ?? false),
-                title: Text.rich(
+                onChanged: (v) => setState(() => _agree = v),
+                child: Text.rich(
                   TextSpan(
                     children: [
                       const TextSpan(text: 'I agree to the '),
-                      TextSpan(text: 'Terms and Conditions', style: _link, recognizer: _termsTap),
+                      TextSpan(text: 'Terms and Conditions', style: linkStyle, recognizer: _termsTap),
                       const TextSpan(text: ' and the '),
-                      TextSpan(text: 'Privacy Policy', style: _link, recognizer: _privacyTap),
+                      TextSpan(text: 'Privacy Policy', style: linkStyle, recognizer: _privacyTap),
                     ],
                   ),
                 ),
               ),
-              CheckboxListTile(
+              CheckRow(
                 value: _marketing,
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                onChanged: (v) => setState(() => _marketing = v ?? false),
-                title: const Text('Send me offers and news from Tabital Pay (optional). Payment reminders come either way.'),
+                onChanged: (v) => setState(() => _marketing = v),
+                child: const Text('Send me offers and news from Tabital Pay (optional). Payment reminders come either way.'),
               ),
-              if (_error != null) ...[const SizedBox(height: Tp.s2), Notice(_error!, tone: NoticeTone.error)],
+              const SizedBox(height: Tp.s3),
+              Note(
+                "That's all for now. After you sign up, you'll add your address, work and income, Ghana Card and a person "
+                'we can contact when you verify your identity.',
+                key: const Key('su-next'),
+                icon: LucideIcons.listChecks,
+              ),
+              if (_error != null) ...[const SizedBox(height: Tp.s3), Notice(_error!, tone: NoticeTone.error)],
               const SizedBox(height: Tp.s4),
               FilledButton(
                 key: const Key('su-submit'),
@@ -416,13 +250,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: _busy ? const ButtonSpinner() : const Text('Create account'),
               ),
               const SizedBox(height: Tp.s3),
-              TextButton(onPressed: () => context.go('/sign-in'), child: const Text('Already have an account? Sign in')),
+              TextButton(
+                onPressed: () => context.go('/sign-in'),
+                child: Text('Already have an account? Sign in', style: t.labelLarge?.copyWith(color: Tp.navy2)),
+              ),
             ],
           ),
         ),
       ),
     );
   }
-
-  static const _link = TextStyle(color: Tp.navy2, decoration: TextDecoration.underline, fontWeight: FontWeight.w600);
 }
