@@ -93,6 +93,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 onTap: () => context.go('/account/cards'),
               ),
               ListRow(icon: LucideIcons.scanFace, label: 'Verify your identity', onTap: () => context.go('/account/identity')),
+              ListRow(key: const Key('account-documents'), icon: LucideIcons.fileUp, label: 'Upload documents', onTap: () => context.go('/account/identity/documents')),
               ListRow(icon: LucideIcons.bell, label: 'Notifications', onTap: () => context.push('/notifications')),
             ]),
           ),

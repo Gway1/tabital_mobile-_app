@@ -20,6 +20,13 @@ class DocumentsScreen extends StatefulWidget {
 }
 
 class _DocumentsScreenState extends State<DocumentsScreen> {
+  static const _uploadFields = [
+    ('front_image', 'Ghana Card front'),
+    ('back_image', 'Ghana Card back'),
+    ('salary_certificate', 'Salary certificate'),
+    ('bank_statement', 'Bank statement (3 months)'),
+  ];
+
   KycChecklist? _checklist;
   String? _loadError;
   String? _uploading; // the field being sent
@@ -70,30 +77,35 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final c = _checklist;
+    final serverDocuments = {for (final d in c?.documents ?? <KycDocument>[]) d.field: d};
+    final documents = [
+      for (final (field, label) in _uploadFields)
+        serverDocuments[field] ?? KycDocument(field: field, label: label, status: 'missing', rejectionReason: null, canUpload: true),
+    ];
     return Scaffold(
-      appBar: AppBar(title: const Text('Documents')),
-      body: _loadError != null
-          ? ErrorPanel(message: _loadError!, onRetry: _load)
-          : c == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+      appBar: AppBar(title: const Text('Upload documents')),
+      body: RefreshIndicator(
               onRefresh: _load,
               child: ListView(
                 padding: pagePadding,
                 children: [
-                  if (c.documentsToUpload.isNotEmpty)
+                  if (_loadError != null)
+                    const Note('Document status is unavailable right now. You can still upload a file and refresh to check its review status.', key: Key('docs-status-unavailable'), icon: LucideIcons.circleAlert, tone: NoteTone.warn)
+                  else if (c == null)
+                    const Center(child: CircularProgressIndicator())
+                  else if (c.documentsToUpload.isNotEmpty)
                     Note(
                       'Still needed: ${c.documentsToUpload.join(', ')}. Upload each one as soon as you have it.',
                       key: const Key('docs-still-needed'),
                       icon: LucideIcons.listChecks,
                       tone: NoteTone.warn,
                     )
-                  else
+                  else if (c.documents.isNotEmpty)
                     const Note('All your documents are uploaded. The team reviews each one.', tone: NoteTone.success),
                   const SizedBox(height: Tp.s3),
                   VCard(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Lined([for (final d in c.documents) _row(d)]),
+                    child: Lined([for (final d in documents) _row(d)]),
                   ),
                   const SizedBox(height: Tp.s3),
                   Text(
