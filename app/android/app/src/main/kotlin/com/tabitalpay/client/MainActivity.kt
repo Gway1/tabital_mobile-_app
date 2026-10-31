@@ -1,4 +1,4 @@
-package com.tabitalpay.tabital_pay
+package com.tabitalpay.client
 
 import android.Manifest
 import android.content.pm.PackageManager

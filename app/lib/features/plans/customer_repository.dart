@@ -314,6 +314,9 @@ class CustomerRepository {
   /// Uploads one document (`front_image`, `back_image`, `salary_certificate` or
   /// `bank_statement`). Returns the server's message; reload the checklist after.
   Future<String> uploadDocument(String field, PickedDocument file) async {
+    if (!const {'front_image', 'back_image', 'salary_certificate', 'bank_statement'}.contains(field)) {
+      throw ApiException('That document type is not supported.');
+    }
     final res = await api.upload('/customer/documents/upload', {field: (file.name, file.bytes)});
     changed();
     final message = res is Map ? res['message'] : null;

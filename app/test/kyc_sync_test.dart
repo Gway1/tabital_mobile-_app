@@ -163,6 +163,7 @@ void main() {
 
     testWidgets('a picked file goes to the server as that one document, then the list reloads', (tester) async {
       final f = api();
+      await f.session.saveToken('customer-token');
       final picker = FakeDocumentPicker(PickedDocument(name: 'card.jpg', bytes: List.filled(1000, 1)));
       await pumpApp(tester, f, '/account/identity/documents', documents: picker);
       final loads = calls(f, 'GET', '/customer/kyc/details');
@@ -170,9 +171,27 @@ void main() {
       await tester.pumpAndSettle();
       final upload = f.requests.lastWhere((r) => r.url.path == '/customer/documents/upload');
       expect(upload.headers['content-type'], startsWith('multipart/form-data'));
+      expect(upload.headers['authorization'], 'Bearer customer-token');
       expect(upload.body, contains('name="front_image"; filename="card.jpg"'));
       expect(find.text('Uploaded: Ghana Card (Front). The team will review it.'), findsOneWidget);
       expect(calls(f, 'GET', '/customer/kyc/details'), loads + 1);
+    });
+
+    testWidgets('all four upload fields stay available when document status cannot load', (tester) async {
+      final f = FakeApi({
+        'GET /customer/kyc/details': (404, {'error': 'Not found'}),
+        'POST /customer/documents/upload': (201, {'message': 'Uploaded'}),
+      });
+      await pumpApp(tester, f, '/account/identity/documents',
+          documents: FakeDocumentPicker(PickedDocument(name: 'statement.pdf', bytes: List.filled(10, 1))));
+      expect(find.byKey(const Key('docs-status-unavailable')), findsOneWidget);
+      for (final field in const ['front_image', 'back_image', 'salary_certificate', 'bank_statement']) {
+        expect(find.byKey(Key('doc-upload-$field')), findsOneWidget);
+      }
+      await tester.tap(find.byKey(const Key('doc-upload-bank_statement')));
+      await tester.pumpAndSettle();
+      final upload = f.requests.lastWhere((r) => r.url.path == '/customer/documents/upload');
+      expect(upload.body, contains('name="bank_statement"; filename="statement.pdf"'));
     });
 
     testWidgets("the server's refusal shows under that document", (tester) async {
